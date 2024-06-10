@@ -1,27 +1,28 @@
 //! `model` manages the CRUD loop for pastes
-use crate::{database::ClientManager, utility::unix_timestamp};
+use std::sync::Arc;
+
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
+
+use crate::{database::ClientManager, utility::unix_timestamp};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Paste {
-    id: u32,
-    url: String,
-    content: String,
-    password: String,
+    id:             u32,
+    url:            String,
+    content:        String,
+    password:       String,
     date_published: u64,
-    date_edited: u64,
+    date_edited:    u64,
 }
 
 // This is only needed when using Arc<Mutex<Vec<Paste>>>
 // It only exists so we can do `paste[field]``
 impl std::ops::Index<String> for Paste {
     type Output = String;
-
     fn index(&self, index: String) -> &Self::Output {
         match index.as_ref() {
             "url" => &self.url,
@@ -32,8 +33,8 @@ impl std::ops::Index<String> for Paste {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PasteCreate {
-    url: String,
-    content: String,
+    url:      String,
+    content:  String,
     password: String,
 }
 
@@ -47,7 +48,7 @@ pub struct PasteReturn {
     pub url:            String,
     pub content:        String,
     pub date_published: u64,
-    pub date_edited:    u64
+    pub date_edited:    u64,
 }
 
 pub enum PasteError {
@@ -135,10 +136,10 @@ impl PasteManager {
 
         match searched_paste {
             Ok(p) => Ok(PasteReturn {
-                url: p.url.to_owned(),
-                content: p.content.to_owned(),
+                url:            p.url.to_owned(),
+                content:        p.content.to_owned(),
                 date_published: p.date_published,
-                date_edited: p.date_edited,
+                date_edited:    p.date_edited,
             }),
             Err(_) => Err(PasteError::NotFound),
         }

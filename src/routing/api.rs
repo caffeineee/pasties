@@ -1,10 +1,11 @@
 //! `routing::api` responds to requests that should return serialized data to the client. It creates an interface for the `PasteManager` CRUD struct defined in `model`
-use crate::model::{PasteCreate, PasteDelete, PasteError, PasteManager, PasteReturn};
 use axum::{
     extract::{Path, State},
     routing::{get, post},
     Json, Router,
 };
+
+use crate::model::{PasteCreate, PasteDelete, PasteError, PasteManager, PasteReturn};
 pub fn routes(manager: PasteManager) -> Router {
     Router::new()
         .route("/new", post(create_paste))
@@ -19,8 +20,8 @@ async fn create_paste(
 ) -> Result<(), PasteError> {
     let res = manager.create_paste(paste_to_create).await;
     match res {
-        Ok(_)  => Ok(()),
-        Err(e) => Err(e)
+        Ok(_) => Ok(()),
+        Err(e) => Err(e),
     }
 }
 

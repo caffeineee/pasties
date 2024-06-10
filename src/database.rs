@@ -1,6 +1,8 @@
-use crate::model::PasteError;
-use rusqlite::Connection;
 use std::sync::{Arc, Mutex};
+
+use rusqlite::Connection;
+
+use crate::model::PasteError;
 
 pub type Result<T> = std::result::Result<T, PasteError>;
 
@@ -30,8 +32,6 @@ impl Database {
 }
 
 /// Client manager for the database
-///
-/// Currently this is unused, and will stay so until the model and api are finished and I can transition from the PasteManager's mock storage to an actual database
 #[derive(Clone)]
 pub struct ClientManager<T> {
     /// Temporary store, it's labeled "pool" but is not currently a pool
