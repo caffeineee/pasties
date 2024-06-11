@@ -18,7 +18,7 @@
     -ms-text-size-adjust: 100%;
     text-size-adjust: 100%;
     --background-color: #111;
-    --foreground-color: #fff;
+    --foreground-color: #fefefe;
 }
 @supports (font-variation-settings: normal) {
     :root { font-family: InterVariable, sans-serif; }
@@ -49,4 +49,16 @@ h3 {
 h4 {
     font-weight: 700;
     letter-spacing: -0.012em;
+}
+blockquote {
+    background: #333333;
+    border-radius: 0.2rem;
+    color: #dedede;
+    padding: 1rem;
+  }
+footer {
+    color: hsl(0, 0%, 70%);
+}
+footer > p {
+    color: var(--foreground-color);
 }

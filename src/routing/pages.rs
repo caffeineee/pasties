@@ -17,20 +17,32 @@ pub fn routes(manager: PasteManager) -> Router {
         .nest_service("/assets", get_service(ServeDir::new("./assets")))
         .with_state(manager)
 }
-pub async fn root() -> &'static str {
-    "A landing page will be displayed here, eventually with a code editor"
-}
+
 pub async fn not_found_handler() -> &'static str {
     "Error 404: the resource you requested could not be found"
 }
+
+#[derive(Template)]
+#[template(path = "editor.html")]
+struct EditorProps {
+    title: String,
+    paste: Option<PasteReturn>,
+}
+
+pub async fn root() -> impl IntoResponse {
+    let editor = EditorProps {
+        title: "".to_string(),
+        paste: None
+    };
+    Html(editor.render().unwrap())
+}
+
 #[derive(Template)]
 #[template(path = "paste.html")]
 struct PasteView {
     title: String,
     paste: PasteReturn,
 }
-
-//TODO: make an error page; handle Askama errors gracefully instead of unwrapping
 
 #[derive(Template)]
 #[template(path = "error.html")]

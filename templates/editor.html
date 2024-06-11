@@ -1,0 +1,24 @@
+{% extends "root.html" %}
+
+{% block title %}
+    {{ title }} —
+{% endblock %}
+
+{% block container %}
+    <div class="editor-container">
+        <nav>
+            <div>
+                <a href="#">edit</a>
+                <a href="#">preview</a>
+            </div>
+            <div>
+                <a href="#">publish</a>
+            </div>
+        </nav>
+        <section>
+            {% if paste.is_some() %}
+                {{ paste.content }}
+            {% endif %}
+        </section>
+    </div>
+{% endblock %}
