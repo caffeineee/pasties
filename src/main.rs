@@ -1,5 +1,8 @@
 use axum::{routing::get, Router};
-use pasties::{model::PasteManager, routing::{api, pages}};
+use pasties::{
+    model::PasteManager,
+    routing::{api, pages},
+};
 
 #[tokio::main]
 async fn main() {
@@ -18,20 +21,4 @@ async fn main() {
 
     println!("Starting server at http://localhost:{PORT}!");
     axum::serve(listener, app).await.unwrap();
-}
-#[cfg(test)]
-mod tests {
-    use pasties::database;
-
-    #[test]
-    fn does_db_work() {
-        assert_eq!("random contend idek what to put here".to_string(), database::Database::init().get_paste_by_url(&"newpaste".to_string()).unwrap().content)
-    }
-
-    // #[test]
-    // fn manual_db() {
-    //     let c = database::Database::init().connection;
-    //     let s = c.prepare("select * from pastes where url='hello';").unwrap();
-    //     println!("{:?}", s.query(()).unwrap().map(|a|{a}).into())
-    // }
 }

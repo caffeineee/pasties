@@ -32,7 +32,7 @@ async fn delete_paste_by_url(
 ) -> Result<(), PasteError> {
     match manager.delete_paste_by_url(paste_to_delete).await {
         Ok(_) => Ok(()),
-        Err(e) => Err(e)
+        Err(e) => Err(e),
     }
 }
 

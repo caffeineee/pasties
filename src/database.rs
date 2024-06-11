@@ -12,7 +12,7 @@ pub enum DatabaseError {
     Retrieval(rusqlite::Error),
     Insert(rusqlite::Error),
     Delete(rusqlite::Error),
-    BadRequest
+    BadRequest,
 }
 
 impl Database {
@@ -36,10 +36,10 @@ impl Database {
         Self { connection: c }
     }
     /// Creates a new paste record in the database.
-    /// 
+    ///
     /// **Arguments**
     /// * `paste`: a `Paste` struct to create a record of
-    /// 
+    ///
     /// **Returns:** `Result<i64, DatabaseError>` where the i64 is the paste's unique ID returned by the database
     pub fn insert_paste(&self, paste: Paste) -> Result<i64, DatabaseError> {
         match self.connection.execute(
@@ -58,22 +58,25 @@ impl Database {
         }
     }
     /// Deletes a paste from the database
-    /// 
+    ///
     /// **Arguments**
     /// * `url`: a paste's custom URL
-    /// 
+    ///
     /// **Returns:** `Result<(), DatabaseError>`
     pub fn delete_paste(&self, url: &String) -> Result<(), DatabaseError> {
-        match self.connection.execute("delete from pastes where url=?1", [url]) {
-            Ok(_)  => Ok(()),
-            Err(e) => Err(DatabaseError::Delete(e))
+        match self
+            .connection
+            .execute("delete from pastes where url=?1", [url])
+        {
+            Ok(_) => Ok(()),
+            Err(e) => Err(DatabaseError::Delete(e)),
         }
     }
     /// Creates a new paste record in the database.
-    /// 
+    ///
     /// **Arguments**
     /// * `url`: a paste's custom URL
-    /// 
+    ///
     /// **Returns:** `Result<Paste, DatabaseError>`
     pub fn retrieve_paste(&self, url: &String) -> Result<Paste, DatabaseError> {
         let mut query = self
@@ -92,7 +95,7 @@ impl Database {
         });
         match paste {
             Ok(p) => Ok(p),
-            Err(e) => Err(DatabaseError::Delete(e))
+            Err(e) => Err(DatabaseError::Delete(e)),
         }
     }
 }

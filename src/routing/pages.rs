@@ -32,7 +32,7 @@ struct EditorProps {
 pub async fn root() -> impl IntoResponse {
     let editor = EditorProps {
         title: "".to_string(),
-        paste: None
+        paste: None,
     };
     Html(editor.render().unwrap())
 }

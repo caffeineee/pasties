@@ -92,10 +92,7 @@ impl IntoResponse for PasteError {
 impl Display for PasteError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::NotFound => write!(
-                f,
-                "No paste with this URL has been found"
-            ),
+            Self::NotFound => write!(f, "No paste with this URL has been found"),
             Self::AlreadyExists => {
                 write!(f, "A paste with this URL already exists")
             }
@@ -123,7 +120,7 @@ impl PasteManager {
     ///
     /// **Arguments**:
     /// * `paste`: a `PasteCreate` instance
-    /// 
+    ///
     /// **Returns:** `Result<(), PasteError>`
     pub async fn create_paste(&self, paste: PasteCreate) -> Result<(), PasteError> {
         if let Ok(_) = self.database.lock().unwrap().retrieve_paste(&paste.url) {
@@ -141,17 +138,16 @@ impl PasteManager {
 
         // TODO: Handle errors out here
         match self.database.lock().unwrap().insert_paste(paste_to_insert) {
-            Ok(_)  => Ok(()),
-            Err(_)  => Err(PasteError::Other)
+            Ok(_) => Ok(()),
+            Err(_) => Err(PasteError::Other),
         }
-
     }
 
     /// Retrieves a `Paste` from `PasteManager` by its `url`
     ///
     /// **Arguments**:
     /// * `paste_url`: a paste's custom URL
-    /// 
+    ///
     /// **Returns:** `Result<PasteReturn, PasteError>`
     pub async fn get_paste_by_url(&self, paste_url: String) -> Result<PasteReturn, PasteError> {
         let searched_paste = self.database.lock().unwrap().retrieve_paste(&paste_url);
@@ -170,19 +166,32 @@ impl PasteManager {
     ///
     /// **Arguments**:
     /// * `paste_to_delete`: an instance of `PasteDelete`
-    /// 
+    ///
     /// **Returns:** `Option<PasteReturn>`, where `None` signifies that the paste has not been found
-    pub async fn delete_paste_by_url(&self, paste_to_delete: PasteDelete) -> Result<(), PasteError> {
-        let existing_paste = match self.database.lock().unwrap().retrieve_paste(&paste_to_delete.url) {
-            Ok(p)  => p,
-            Err(_) => return Err(PasteError::NotFound)
+    pub async fn delete_paste_by_url(
+        &self,
+        paste_to_delete: PasteDelete,
+    ) -> Result<(), PasteError> {
+        let existing_paste = match self
+            .database
+            .lock()
+            .unwrap()
+            .retrieve_paste(&paste_to_delete.url)
+        {
+            Ok(p) => p,
+            Err(_) => return Err(PasteError::NotFound),
         };
         if hash_string(paste_to_delete.password) != existing_paste.password_hash {
             return Err(PasteError::PasswordIncorrect);
         }
-        match self.database.lock().unwrap().delete_paste(&paste_to_delete.url) {
-            Ok(_)  => Ok(()),
-            Err(_) => Err(PasteError::Other)
+        match self
+            .database
+            .lock()
+            .unwrap()
+            .delete_paste(&paste_to_delete.url)
+        {
+            Ok(_) => Ok(()),
+            Err(_) => Err(PasteError::Other),
         }
     }
 }
