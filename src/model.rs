@@ -161,9 +161,8 @@ impl PasteManager {
     ///
     /// **Arguments**:
     /// * `paste_url`: a paste's custom URL
-    /// **Returns:** `Option<PasteReturn>`, where `None` signifies that the paste has not been found
+    /// **Returns:** `Result<PasteReturn, PasteError>`
     pub async fn get_paste_by_url(&self, paste_url: String) -> Result<PasteReturn, PasteError> {
-        // let searched_paste = self.manager.select_single(String::from("url"), &paste_url);
         let searched_paste = self.database.lock().unwrap().get_paste_by_url(&paste_url);
         match searched_paste {
             Some(p) => Ok(PasteReturn {

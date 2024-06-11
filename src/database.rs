@@ -27,8 +27,8 @@ impl Database {
                  url            text,
                  password       text,
                  content        text,
-                 date_published text,
-                 date_edited    text
+                 date_published integer,
+                 date_edited    integer
              )",
             (),
         ) {
@@ -57,9 +57,9 @@ impl Database {
     pub fn get_paste_by_url(&self, url: &String) -> Option<Paste> {
         let mut query = self
             .connection
-            .prepare("select * from pastes where url = (:url)")
+            .prepare("select * from pastes where url=?1")
             .unwrap();
-        let paste = query.query_row(&[(":url", &url)], |p| {
+        let paste = query.query_row([url], |p| {
             Ok(Paste {
                 id:             p.get(0)?,
                 url:            p.get(1)?,
