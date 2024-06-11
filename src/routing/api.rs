@@ -5,12 +5,12 @@ use axum::{
     Json, Router,
 };
 
-use crate::model::{PasteCreate, PasteDelete, PasteError, PasteManager, PasteReturn};
+use crate::model::{PasteCreate, PasteError, PasteManager, PasteReturn};
 pub fn routes(manager: PasteManager) -> Router {
     Router::new()
         .route("/new", post(create_paste))
         .route("/:url", get(get_paste_by_url))
-        .route("/:url/delete", post(delete_paste_by_url))
+        //.route("/:url/delete", post(delete_paste_by_url))
         .with_state(manager)
 }
 
@@ -25,15 +25,15 @@ async fn create_paste(
     }
 }
 
-async fn delete_paste_by_url(
+/* async fn delete_paste_by_url(
     State(manager): State<PasteManager>,
     Path(url): Path<String>,
     Json(paste_to_delete): Json<PasteDelete>,
 ) -> Result<(), PasteError> {
     manager
-        .delete_paste_by_url(url, paste_to_delete.password)
+        .delete_paste_by_url(paste_to_delete)
         .await
-}
+} */
 
 pub async fn get_paste_by_url(
     State(manager): State<PasteManager>,

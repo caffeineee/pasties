@@ -9,7 +9,7 @@ use axum::{
 };
 use tower_http::services::ServeDir;
 
-use crate::model::{PasteManager, PasteReturn};
+use crate::model::{PasteError, PasteManager, PasteReturn};
 
 pub fn routes(manager: PasteManager) -> Router {
     Router::new()
@@ -32,12 +32,12 @@ struct PasteView {
 
 //TODO: make an error page; handle Askama errors gracefully instead of unwrapping
 
-// #[derive(Template)]
-// #[template(path = "error.html")]
-// struct ErrorView {
-//     title:   String,
-//     error:   PasteError,
-// }
+#[derive(Template)]
+#[template(path = "error.html")]
+struct ErrorView {
+    title: String,
+    error: PasteError,
+}
 
 pub async fn view_paste_by_url(
     Path(url): Path<String>,
@@ -52,14 +52,9 @@ pub async fn view_paste_by_url(
             Html(paste_render.render().unwrap())
         }
         Err(e) => {
-            let paste_render = PasteView {
-                title: "error".to_string(),
-                paste: PasteReturn {
-                    url:            "error".to_string(),
-                    content:        "error".to_string(),
-                    date_published: 0,
-                    date_edited:    0,
-                },
+            let paste_render = ErrorView {
+                title: "Error".to_string(),
+                error: e,
             };
             Html(paste_render.render().unwrap())
         }

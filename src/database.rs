@@ -1,18 +1,27 @@
+//! `database` is responsible for handling a connection to an SQLite database that stores pastes
+
 use std::sync::{Arc, Mutex};
 
-use rusqlite::Connection;
+use rusqlite::{params, Connection};
 
-use crate::model::PasteError;
+use crate::model::{Paste, PasteError};
 
 pub type Result<T> = std::result::Result<T, PasteError>;
 
-/// Database connector
-pub struct Database {}
+pub struct Database {
+    connection: Connection,
+}
+
+pub enum DatabaseError {
+    Retrieval,
+    Insertion,
+}
 
 impl Database {
-    pub fn init() -> Connection {
-        let conn = Connection::open("main.db").unwrap();
-        let table_result = conn.execute(
+    /// Initializes a `Database` struct, creates a `pastes` table if there isn't one already, and returns `Self` with the connection field filled
+    pub fn init() -> Self {
+        let c = Connection::open("main.db").unwrap();
+        match c.execute(
             "create table if not exists pastes (
                  id             integer primary key,
                  url            text,
@@ -22,12 +31,45 @@ impl Database {
                  date_edited    text
              )",
             (),
-        );
-        match table_result {
+        ) {
             Ok(_) => println!("Successfully connected to table."),
             Err(e) => panic!("Database creation failed with error message: {e}"),
+        }
+        Self { connection: c }
+    }
+    pub fn insert_paste(&self, paste: Paste) -> i64 {
+        match self.connection.execute(
+            "insert into pastes(url,  password,  content,  date_published,  date_edited)
+                         values (?1, ?2, ?3, ?4, ?5)",
+            params![
+                paste.url,
+                paste.password_hash,
+                paste.content,
+                paste.date_published,
+                paste.date_edited
+            ],
+        ) {
+            Ok(_) => (),
+            Err(e) => panic!("Database insert failed: {e}"),
         };
-        conn
+        self.connection.last_insert_rowid()
+    }
+    pub fn get_paste_by_url(&self, url: &String) -> Option<Paste> {
+        let mut query = self
+            .connection
+            .prepare("select * from pastes where url = (:url)")
+            .unwrap();
+        let paste = query.query_row(&[(":url", &url)], |p| {
+            Ok(Paste {
+                id:             p.get(0)?,
+                url:            p.get(1)?,
+                password_hash:  p.get(2)?,
+                content:        p.get(3)?,
+                date_published: p.get(4)?,
+                date_edited:    p.get(5)?,
+            })
+        });
+        paste.ok()
     }
 }
 

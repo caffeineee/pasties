@@ -1,5 +1,5 @@
 use axum::{routing::get, Router};
-use pasties::{model::PasteManager, routing::api, routing::pages};
+use pasties::{model::PasteManager, routing::{api, pages}, utility::hash_string};
 
 #[tokio::main]
 async fn main() {
