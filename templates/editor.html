@@ -1,7 +1,10 @@
 {% extends "root.html" %}
 
 {% block title %}
-    {{ title }} —
+    {% if paste.is_some() %}
+        {{ title }} — 
+    {% endif %}
+    Pasties
 {% endblock %}
 
 {% block container %}
@@ -17,7 +20,8 @@
         </nav>
         <section>
             {% if paste.is_some() %}
-                {{ paste.content }}
+                {% let p = paste.clone().unwrap() %}
+                {{ p.content }}
             {% endif %}
         </section>
     </div>

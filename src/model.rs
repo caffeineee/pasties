@@ -14,11 +14,12 @@ use axum::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    database::{ClientManager, Database},
+    database::Database,
     utility::{hash_string, unix_timestamp},
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+/// The complete representation of a paste from the database
 pub struct Paste {
     pub id:             Option<i64>,
     pub url:            String,
@@ -28,26 +29,16 @@ pub struct Paste {
     pub date_edited:    u64,
 }
 
-// This is only needed when using Arc<Mutex<Vec<Paste>>>
-// It only exists so we can do `paste[field]``
-impl std::ops::Index<String> for Paste {
-    type Output = String;
-    fn index(&self, index: String) -> &Self::Output {
-        match index.as_ref() {
-            "url" => &self.url,
-            _ => todo!(),
-        }
-    }
-}
-
 #[derive(Serialize, Deserialize, Debug)]
+/// Paste data specified by the user, to be handled by `PasteManager`
 pub struct PasteCreate {
     url:      String,
     content:  String,
     password: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+/// Paste data to be served to the end user
 pub struct PasteReturn {
     pub url:            String,
     pub content:        String,
@@ -56,11 +47,13 @@ pub struct PasteReturn {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+/// Data to delete a paste specified by the user, to be handled by `PasteManager`
 pub struct PasteDelete {
     pub url:      String,
     pub password: String,
 }
 
+/// Various errors that may occur while processing requests made through `PasteManager`
 pub enum PasteError {
     PasswordIncorrect,
     AlreadyExists,
@@ -72,19 +65,19 @@ impl IntoResponse for PasteError {
     fn into_response(self) -> Response {
         use crate::model::PasteError::*;
         match self {
-            PasswordIncorrect => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "The given password is invalid.",
+            NotFound => (
+                StatusCode::NOT_FOUND,
+                "No paste with this URL has been found",
             )
                 .into_response(),
             AlreadyExists => (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                "A paste with this URL already exists.",
+                "A paste with this URL already exists",
             )
                 .into_response(),
-            NotFound => (
-                StatusCode::NOT_FOUND,
-                "No paste with this URL has been found.",
+            PasswordIncorrect => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "The specified password is incorrect",
             )
                 .into_response(),
             _ => (
@@ -101,10 +94,10 @@ impl Display for PasteError {
         match self {
             Self::NotFound => write!(
                 f,
-                "A paste with the specified identifier could not be found"
+                "No paste with this URL has been found"
             ),
             Self::AlreadyExists => {
-                write!(f, "A paste with the specified identifier already exists")
+                write!(f, "A paste with this URL already exists")
             }
             Self::PasswordIncorrect => write!(f, "The specified password is incorrect"),
             Self::Other => write!(f, "An unspecified error occured with the paste manager"),
@@ -114,19 +107,14 @@ impl Display for PasteError {
 
 #[derive(Clone)]
 pub struct PasteManager {
-    // This will eventually be a lot more elaborate as a database is implemented, currently this mock storage is here so I can test the API
-    manager:  ClientManager<Paste>,
     database: Arc<Mutex<Database>>,
 }
 
 /// CRUD manager for pastes
-///
-/// TODO: use an actual database instead of in-memory `Arc<Mutex<Vec<Paste>>>`
 impl PasteManager {
-    /// Returns a new instance of `PasteManager`
+    /// **Returns:** a new instance of `PasteManager`
     pub async fn init() -> Self {
         Self {
-            manager:  ClientManager::new(Arc::default()),
             database: Arc::new(Mutex::new(Database::init())),
         }
     }
@@ -135,10 +123,10 @@ impl PasteManager {
     ///
     /// **Arguments**:
     /// * `paste`: a `PasteCreate` instance
+    /// 
     /// **Returns:** `Result<(), PasteError>`
     pub async fn create_paste(&self, paste: PasteCreate) -> Result<(), PasteError> {
-        // make sure paste doesn't already exist
-        if let Some(_) = self.database.lock().unwrap().get_paste_by_url(&paste.url) {
+        if let Ok(_) = self.database.lock().unwrap().retrieve_paste(&paste.url) {
             return Err(PasteError::AlreadyExists);
         }
 
@@ -152,48 +140,49 @@ impl PasteManager {
         };
 
         // TODO: Handle errors out here
-        self.database.lock().unwrap().insert_paste(paste_to_insert);
+        match self.database.lock().unwrap().insert_paste(paste_to_insert) {
+            Ok(_)  => Ok(()),
+            Err(_)  => Err(PasteError::Other)
+        }
 
-        Ok(())
     }
 
     /// Retrieves a `Paste` from `PasteManager` by its `url`
     ///
     /// **Arguments**:
     /// * `paste_url`: a paste's custom URL
+    /// 
     /// **Returns:** `Result<PasteReturn, PasteError>`
     pub async fn get_paste_by_url(&self, paste_url: String) -> Result<PasteReturn, PasteError> {
-        let searched_paste = self.database.lock().unwrap().get_paste_by_url(&paste_url);
+        let searched_paste = self.database.lock().unwrap().retrieve_paste(&paste_url);
         match searched_paste {
-            Some(p) => Ok(PasteReturn {
+            Ok(p) => Ok(PasteReturn {
                 url:            p.url.to_owned(),
                 content:        p.content.to_owned(),
                 date_published: p.date_published,
                 date_edited:    p.date_edited,
             }),
-            None => Err(PasteError::NotFound),
+            Err(_) => Err(PasteError::NotFound),
         }
     }
 
     /// Removes a `Paste` from `PasteManager` by its `url`
     ///
     /// **Arguments**:
-    /// * `paste_url`: a paste's custom URL
+    /// * `paste_to_delete`: an instance of `PasteDelete`
+    /// 
     /// **Returns:** `Option<PasteReturn>`, where `None` signifies that the paste has not been found
-    pub async fn delete_paste_by_url(&self, paste: PasteDelete) -> Result<(), PasteError> {
-        // make sure paste exists
-        let existing = match self.manager.select_single(String::from("url"), &paste.url) {
-            Ok(p) => p,
-            Err(_) => return Err(PasteError::NotFound),
+    pub async fn delete_paste_by_url(&self, paste_to_delete: PasteDelete) -> Result<(), PasteError> {
+        let existing_paste = match self.database.lock().unwrap().retrieve_paste(&paste_to_delete.url) {
+            Ok(p)  => p,
+            Err(_) => return Err(PasteError::NotFound)
         };
-
-        // check password
-        // in the future, hashes should be compared here
-        if paste.password != existing.password_hash {
+        if hash_string(paste_to_delete.password) != existing_paste.password_hash {
             return Err(PasteError::PasswordIncorrect);
         }
-
-        // return
-        self.manager.remove_single(String::from("url"), &paste.url)
+        match self.database.lock().unwrap().delete_paste(&paste_to_delete.url) {
+            Ok(_)  => Ok(()),
+            Err(_) => Err(PasteError::Other)
+        }
     }
 }

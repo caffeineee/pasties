@@ -1,11 +1,13 @@
 {% extends "root.html" %}
 
 {% block title %}
-    ERROR — 
+    Something went wrong — Pasties
 {% endblock %}
 
 {% block container %}
-    <blockquote>
-        <p><b>Error:</b> {{ error }}</p>
-    </blockquote>
+    <div class="error-container">
+        <blockquote>
+            <p><b>Error:</b> {{ error }}</p>
+        </blockquote>
+    </div>
 {% endblock %}
