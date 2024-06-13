@@ -1,40 +1,54 @@
-//! `routing::pages` responds to requests that should return rendered HTML to the client
+//! `routing::pages` responds to requests that should return rendered HTML (or its assets) to the client
+
+use std::fs;
 
 use askama_axum::Template;
 use axum::{
     extract::{Path, State},
+    http::{header, StatusCode},
     response::{Html, IntoResponse},
-    routing::{get, get_service},
+    routing::get,
     Router,
 };
-use tower_http::services::ServeDir;
 
 use crate::model::{PasteError, PasteManager, PasteReturn};
 
 pub fn routes(manager: PasteManager) -> Router {
     Router::new()
         .route("/:url", get(view_paste_by_url))
-        .nest_service("/assets", get_service(ServeDir::new("./assets")))
         .with_state(manager)
 }
 
-pub async fn not_found_handler() -> &'static str {
-    "Error 404: the resource you requested could not be found"
+pub fn reserved_routes() -> Router {
+    Router::new().route(
+        "/",
+        get(|| async { "This is a route reserved for pasties.".to_string() }),
+    )
+}
+
+pub fn asset_routes() -> Router {
+    Router::new()
+        .route(
+            "/",
+            get(|| async { "This is a route reserved for pasties assets.".to_string() }),
+        )
+        .route(
+            "/style.css",
+            get(|| async {
+                let stylesheet = fs::read_to_string("./assets/style.css");
+                match stylesheet {
+                    Err(e) => panic!("FATAL: Reading the stylesheet failed: {e}"),
+                    Ok(s) => (StatusCode::OK, [(header::CONTENT_TYPE, "text/css")], s),
+                }
+            }),
+        )
 }
 
 #[derive(Template)]
 #[template(path = "editor.html")]
-struct EditorProps {
+struct EditorView {
     title: String,
     paste: Option<PasteReturn>,
-}
-
-pub async fn root() -> impl IntoResponse {
-    let editor = EditorProps {
-        title: "".to_string(),
-        paste: None,
-    };
-    Html(editor.render().unwrap())
 }
 
 #[derive(Template)]
@@ -45,13 +59,21 @@ struct PasteView {
 }
 
 #[derive(Template)]
-#[template(path = "error.html")]
-struct ErrorView {
-    title: String,
-    error: PasteError,
+#[template(path = "infoview.html")]
+struct InfoView {
+    title:   String,
+    content: String,
 }
 
-pub async fn view_paste_by_url(
+pub async fn root() -> impl IntoResponse {
+    let editor = EditorView {
+        title: "".to_string(),
+        paste: None,
+    };
+    Html(editor.render().unwrap())
+}
+
+async fn view_paste_by_url(
     Path(url): Path<String>,
     State(manager): State<PasteManager>,
 ) -> impl IntoResponse {
@@ -64,11 +86,22 @@ pub async fn view_paste_by_url(
             Html(paste_render.render().unwrap())
         }
         Err(e) => {
-            let paste_render = ErrorView {
-                title: "Error".to_string(),
-                error: e,
+            let paste_render = InfoView {
+                title:   "Error".to_string(),
+                content: e.to_string(),
             };
             Html(paste_render.render().unwrap())
         }
     }
+}
+
+pub async fn not_found_handler() -> impl IntoResponse {
+    Html(
+        InfoView {
+            title:   "Error 404".to_string(),
+            content: "The requested resource could not be found".to_string(),
+        }
+        .render()
+        .unwrap(),
+    )
 }

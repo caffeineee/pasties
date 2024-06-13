@@ -7,6 +7,12 @@
     Pasties
 {% endblock %}
 
+{% block head %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap">
+{% endblock %}
+
 {% block container %}
     <div class="editor-container">
         <nav>
@@ -19,10 +25,10 @@
             </div>
         </nav>
         <section>
-            {% if paste.is_some() %}
-                {% let p = paste.clone().unwrap() %}
-                {{ p.content }}
-            {% endif %}
+            <textarea name="editor" id="editor">{% if paste.is_some() %}{% let p = paste.clone().unwrap() %}{{ p.content }}{% endif %}</textarea>
+            <div id="preview">
+
+            </div>
         </section>
     </div>
 {% endblock %}

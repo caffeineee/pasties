@@ -76,7 +76,7 @@ impl IntoResponse for PasteError {
             )
                 .into_response(),
             PasswordIncorrect => (
-                StatusCode::INTERNAL_SERVER_ERROR,
+                StatusCode::UNAUTHORIZED,
                 "The specified password is incorrect",
             )
                 .into_response(),
