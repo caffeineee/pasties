@@ -11,7 +11,7 @@ use axum::{
     Router,
 };
 
-use crate::model::{PasteError, PasteManager, PasteReturn};
+use crate::model::{PasteManager, PasteReturn};
 
 pub fn routes(manager: PasteManager) -> Router {
     Router::new()

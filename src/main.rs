@@ -1,16 +1,18 @@
-use std::fs;
-
 use axum::{routing::get, Router};
-use pasties::{
-    markdown::Markdown, model::PasteManager, routing::{api, pages}
+
+use crate::{
+    model::PasteManager,
+    routing::{api, pages},
 };
+
+pub mod database;
+pub mod model;
+pub mod routing;
+pub mod utility;
 
 #[tokio::main]
 async fn main() {
     const PORT: u16 = 7878;
-
-    let md = Markdown::new(fs::read_to_string("test.txt").unwrap());
-    println!("{:?}", md.blocks);
 
     let manager = PasteManager::init().await;
 

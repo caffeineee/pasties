@@ -1,59 +1,82 @@
 //! `database` is responsible for handling a connection to an SQLite database that stores pastes
 
-use rusqlite::{params, Connection};
+use sqlx::{Row, SqlitePool};
 
-use crate::model::Paste;
+use crate::model::{Paste, PasteReturn};
 
+#[derive(Clone)]
 pub struct Database {
-    connection: Connection,
+    pool: SqlitePool,
 }
 
+#[derive(Debug)]
 pub enum DatabaseError {
-    Retrieval(rusqlite::Error),
-    Insert(rusqlite::Error),
-    Delete(rusqlite::Error),
-    BadRequest,
+    Retrieval(sqlx::Error),
+    Insert(sqlx::Error),
+    Delete(sqlx::Error),
+    BadRequest(sqlx::Error),
+}
+
+async fn init_database() -> SqlitePool {
+    // Connect to the SQLite
+    let pool = match SqlitePool::connect(&format!("sqlite://main.db")).await {
+        Err(e) => panic!("Failed to connect to the database with the following error:\n    {e}"),
+        Ok(pool) => pool,
+    };
+    // Create schema
+    let res = sqlx::query(
+        "create table if not exists pastes (
+            primary_key    integer primary key,
+            id             integer,
+            url            text,
+            password       text,
+            content        text,
+            date_published integer,
+            date_edited    integer
+         )",
+    )
+    .execute(&pool)
+    .await;
+    match res {
+        Err(e) => panic!(
+            "Failed to connect to the pastes table in the database with the following error:\n    {e}"
+        ),
+        Ok(_) => pool,
+    }
 }
 
 impl Database {
-    /// Initializes a `Database` struct, creates a `pastes` table if there isn't one already, and returns `Self` with the connection field filled
-    pub fn init() -> Self {
-        let c = Connection::open("main.db").unwrap();
-        match c.execute(
-            "create table if not exists pastes (
-                 id             integer primary key,
-                 url            text,
-                 password       text,
-                 content        text,
-                 date_published integer,
-                 date_edited    integer
-             )",
-            (),
-        ) {
-            Ok(_) => println!("Successfully connected to table."),
-            Err(e) => panic!("Database creation failed with error message: {e}"),
+    /// Initializes a `Database` struct, creates a `pastes` table if there isn't one already, and returns `Self` with the connection pool field (`self.pool`) filled
+    pub async fn init() -> Self {
+        Self {
+            pool: init_database().await,
         }
-        Self { connection: c }
     }
     /// Creates a new paste record in the database.
     ///
     /// **Arguments**
     /// * `paste`: a `Paste` struct to create a record of
-    ///
-    /// **Returns:** `Result<i64, DatabaseError>` where the i64 is the paste's unique ID returned by the database
-    pub fn insert_paste(&self, paste: Paste) -> Result<i64, DatabaseError> {
-        match self.connection.execute(
-            "insert into pastes(url,  password,  content,  date_published,  date_edited)
-                         values (?1, ?2, ?3, ?4, ?5)",
-            params![
-                paste.url,
-                paste.password_hash,
-                paste.content,
-                paste.date_published,
-                paste.date_edited
-            ],
-        ) {
-            Ok(_) => Ok(self.connection.last_insert_rowid()),
+    pub async fn insert_paste(&self, paste: Paste) -> Result<PasteReturn, DatabaseError> {
+        let query = "insert into pastes(
+                id,
+                url,  
+                password,  
+                content,  
+                date_published,  
+                date_edited
+            ) values (?, ?, ?, ?, ?, ?)";
+        let paste_return = paste.to_paste_return();
+        match sqlx::query(query)
+            .bind(paste.id)
+            .bind(paste.url)
+            .bind(paste.password_hash)
+            .bind(paste.content)
+            .bind(paste.date_published)
+            .bind(paste.date_edited)
+            .execute(&self.pool)
+            .await
+        {
+            Ok(_) => Ok(paste_return),
             Err(e) => Err(DatabaseError::Insert(e)),
         }
     }
@@ -63,39 +86,34 @@ impl Database {
     /// * `url`: a paste's custom URL
     ///
     /// **Returns:** `Result<(), DatabaseError>`
-    pub fn delete_paste(&self, url: &String) -> Result<(), DatabaseError> {
-        match self
-            .connection
-            .execute("delete from pastes where url=?1", [url])
-        {
+    pub async fn delete_paste(&self, url: &String) -> Result<(), DatabaseError> {
+        let query = "delete from pastes where url=?";
+        match sqlx::query(query).bind(url).execute(&self.pool).await {
             Ok(_) => Ok(()),
             Err(e) => Err(DatabaseError::Delete(e)),
         }
     }
-    /// Creates a new paste record in the database.
+    /// Fetches a paste from the database.
     ///
     /// **Arguments**
     /// * `url`: a paste's custom URL
     ///
     /// **Returns:** `Result<Paste, DatabaseError>`
-    pub fn retrieve_paste(&self, url: &String) -> Result<Paste, DatabaseError> {
-        let mut query = self
-            .connection
-            .prepare("select * from pastes where url=?1")
-            .unwrap();
-        let paste = query.query_row([url], |p| {
-            Ok(Paste {
-                id:             p.get(0)?,
-                url:            p.get(1)?,
-                password_hash:  p.get(2)?,
-                content:        p.get(3)?,
-                date_published: p.get(4)?,
-                date_edited:    p.get(5)?,
-            })
-        });
-        match paste {
-            Ok(p) => Ok(p),
-            Err(e) => Err(DatabaseError::Delete(e)),
+    pub async fn retrieve_paste(&self, url: &String) -> Result<Paste, DatabaseError> {
+        match sqlx::query("select * from pastes where url=?1")
+            .bind(url)
+            .fetch_one(&self.pool)
+            .await
+        {
+            Err(e) => Err(DatabaseError::Insert(e)),
+            Ok(row) => Ok(Paste {
+                id:             row.get("id"),
+                url:            row.get("url"),
+                password_hash:  row.get("password"),
+                content:        row.get("content"),
+                date_published: row.get("date_published"),
+                date_edited:    row.get("date_edited"),
+            }),
         }
     }
 }

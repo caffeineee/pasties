@@ -17,18 +17,23 @@
     <div class="editor-container">
         <nav>
             <div>
-                <a href="#">edit</a>
-                <a href="#">preview</a>
+                <a href="">edit</a>
+                <a href="">preview</a>
             </div>
             <div>
-                <a href="#">publish</a>
+                <a href="" hx-post="/api" hx-trigger="click" hx-include="[name='url'], [name='content'], [name='password']" hx-target="#error-modal">publish</a>
             </div>
         </nav>
         <section>
-            <textarea name="editor" id="editor">{% if paste.is_some() %}{% let p = paste.clone().unwrap() %}{{ p.content }}{% endif %}</textarea>
+            <textarea name="content" id="editor">{% if paste.is_some() %}{% let p = paste.clone().unwrap() %}{{ p.content }}{% endif %}</textarea>
             <div id="preview">
 
             </div>
         </section>
+        <div class="metadata-inputs">
+            <input type="text" name="url" id="custom-url" placeholder="Custom URL">
+            <input type="text" name="password" id="password" placeholder="Edit password">
+        </div>
+        <blockquote id="error-modal"></blockquote>
     </div>
 {% endblock %}

@@ -3,9 +3,10 @@ use askama_axum::{IntoResponse, Response};
 use axum::{
     extract::{Path, State},
     http::StatusCode,
-    routing::{delete, get, post},
-    Json, Router,
+    routing::get,
+    Form, Json, Router,
 };
+use axum_macros::debug_handler;
 
 use crate::model::{PasteCreate, PasteDelete, PasteError, PasteManager, PasteReturn};
 use super::pages;
@@ -23,22 +24,29 @@ pub fn routes(manager: PasteManager) -> Router {
         .with_state(manager)
 }
 
+#[debug_handler]
 async fn create_request(
     State(manager): State<PasteManager>,
-    Json(paste_to_create): Json<PasteCreate>,
+    Form(paste_to_create): Form<PasteCreate>,
 ) -> Result<Response, PasteError> {
+    let url = paste_to_create.url.clone();
     let res = manager.create_paste(paste_to_create).await;
     match res {
-        Ok(_) => Ok((StatusCode::CREATED, "Paste created successfully").into_response()),
+        Ok(_) => Ok((
+            StatusCode::CREATED,
+            [("HX-Redirect", format!("{}", url))],
+            "Paste created successfully",
+        )
+            .into_response()),
         Err(e) => Err(e),
     }
 }
 
 async fn delete_request(
     State(manager): State<PasteManager>,
-    Json(paste_to_delete): Json<PasteDelete>,
+    Form(paste_to_delete): Form<PasteDelete>,
 ) -> Result<Response, PasteError> {
-    match manager.delete_paste_by_url(paste_to_delete).await {
+    match manager.delete_paste(paste_to_delete).await {
         Ok(_) => Ok((StatusCode::OK, "Paste deleted successfully").into_response()),
         Err(e) => Err(e),
     }
