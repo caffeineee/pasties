@@ -1,5 +1,5 @@
 //! `model` manages the CRUD loop for pastes
-//! It also handles the logic before database insertions
+//! It also handles the logic before database operations
 
 use core::fmt;
 use std::fmt::Display;
@@ -9,9 +9,10 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use serde::{Deserialize, Serialize};
+use sqlx::SqlitePool;
 
 use crate::{
-    database::Database,
+    database,
     utility::{self, hash_string, pseudoid, unix_timestamp},
 };
 
@@ -26,19 +27,8 @@ pub struct Paste {
     pub date_edited:    i64,
 }
 
-impl Paste {
-    pub fn to_paste_return(&self) -> PasteReturn {
-        PasteReturn {
-            url:            self.url.clone(),
-            content:        self.content.clone(),
-            date_published: self.date_published,
-            date_edited:    self.date_edited,
-        }
-    }
-}
-
 #[derive(Serialize, Deserialize, Debug)]
-/// Paste data specified by the user, to be handled by `PasteManager`
+/// Paste data specified by the user, to be handled by `PasteManager` and recorded in the database
 pub struct PasteCreate {
     pub url:     String,
     pub content: String,
@@ -46,12 +36,23 @@ pub struct PasteCreate {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-/// Paste data to be served to the end user
+/// Paste data to be served to the end user, containing information meant to be displayed by a client
 pub struct PasteReturn {
     pub url:            String,
     pub content:        String,
     pub date_published: i64,
     pub date_edited:    i64,
+}
+
+impl From<Paste> for PasteReturn {
+    fn from(paste: Paste) -> Self {
+        Self {
+            url:            paste.url,
+            content:        paste.content,
+            date_published: paste.date_published,
+            date_edited:    paste.date_edited,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -75,7 +76,7 @@ pub enum PasteError {
     PasswordIncorrect,
 
     // other...
-    Other,
+    Other(String),
 }
 
 impl IntoResponse for PasteError {
@@ -129,7 +130,7 @@ impl Display for PasteError {
             ),
             Self::InvalidUrl => write!(f, "The specified URL is invalid, or is the wrong length"),
             Self::PasswordIncorrect => write!(f, "The specified password is incorrect"),
-            Self::Other => write!(f, "An unspecified error occured with the paste manager"),
+            Self::Other(e) => write!(f, "An unspecified error occured with the paste manager.\nThe following error was passed: {:?}", e),
         }
     }
 }
@@ -137,14 +138,14 @@ impl Display for PasteError {
 /// CRUD manager for pastes
 #[derive(Clone)]
 pub struct PasteManager {
-    database: Database,
+    pool: SqlitePool, // SqlitePool <=> Pool<Sqlite>
 }
 
 impl PasteManager {
     /// **Returns:** a new instance of `PasteManager`
     pub async fn init() -> Self {
         Self {
-            database: Database::init().await,
+            pool: database::init_database().await,
         }
     }
 
@@ -178,7 +179,7 @@ impl PasteManager {
             paste.password = utility::random_string().chars().take(10).collect();
         }
 
-        if let Ok(_) = self.database.retrieve_paste(&paste.url).await {
+        if let Ok(_) = database::retrieve_paste(&self.pool, &paste.url).await {
             return Err(PasteError::AlreadyExists);
         }
 
@@ -192,9 +193,9 @@ impl PasteManager {
         };
 
         // TODO: Handle errors out here
-        match self.database.insert_paste(paste_to_insert).await {
+        match database::insert_paste(&self.pool, paste_to_insert).await {
             Ok(_) => Ok(()),
-            Err(e) => Err(PasteError::Other),
+            Err(e) => Err(PasteError::Other(format!("{:?}", e))),
         }
     }
 
@@ -205,7 +206,7 @@ impl PasteManager {
     ///
     /// **Returns:** `Result<PasteReturn, PasteError>`
     pub async fn get_paste_by_url(&self, paste_url: String) -> Result<PasteReturn, PasteError> {
-        let searched_paste = self.database.retrieve_paste(&paste_url);
+        let searched_paste = database::retrieve_paste(&self.pool, &paste_url);
         match searched_paste.await {
             Ok(p) => Ok(PasteReturn {
                 url:            p.url.to_owned(),
@@ -224,16 +225,17 @@ impl PasteManager {
     ///
     /// **Returns:** `Option<PasteReturn>`, where `None` signifies that the paste has not been found
     pub async fn delete_paste(&self, paste_to_delete: PasteDelete) -> Result<(), PasteError> {
-        let existing_paste = match self.database.retrieve_paste(&paste_to_delete.url).await {
+        let existing_paste = match database::retrieve_paste(&self.pool, &paste_to_delete.url).await
+        {
             Ok(p) => p,
             Err(_) => return Err(PasteError::NotFound),
         };
         if hash_string(paste_to_delete.password) != existing_paste.password_hash {
             return Err(PasteError::PasswordIncorrect);
         }
-        match self.database.delete_paste(&paste_to_delete.url).await {
+        match database::delete_paste(&self.pool, &paste_to_delete.url).await {
             Ok(_) => Ok(()),
-            Err(_) => Err(PasteError::Other),
+            Err(e) => Err(PasteError::Other(format!("{:?}", e))),
         }
     }
 }
