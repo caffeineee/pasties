@@ -14,7 +14,7 @@ pub enum DatabaseError {
 
 pub async fn init_database() -> SqlitePool {
     // Connect to the SQLite
-    let pool = match SqlitePool::connect(&format!("sqlite://main.db")).await {
+    let pool = match SqlitePool::connect("sqlite://main.db").await {
         Err(e) => panic!("Failed to connect to the database with the following error:\n    {e}"),
         Ok(pool) => pool,
     };

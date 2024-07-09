@@ -15,6 +15,7 @@ use crate::model::{PasteManager, PasteReturn};
 
 pub fn routes(manager: PasteManager) -> Router {
     Router::new()
+        .route("/", get(root))
         .route("/:url", get(view_paste_by_url))
         .with_state(manager)
 }

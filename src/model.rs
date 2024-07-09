@@ -160,7 +160,7 @@ impl PasteManager {
         if paste.url.len() > 250 {
             return Err(PasteError::InvalidUrl);
         }
-        if paste.content.len() > 200_000 || paste.content.len() == 0 {
+        if paste.content.len() > 200_000 || paste.content.is_empty() {
             return Err(PasteError::InvalidContent);
         }
         if !paste
@@ -179,7 +179,10 @@ impl PasteManager {
             paste.password = utility::random_string().chars().take(10).collect();
         }
 
-        if let Ok(_) = database::retrieve_paste(&self.pool, &paste.url).await {
+        if database::retrieve_paste(&self.pool, &paste.url)
+            .await
+            .is_ok()
+        {
             return Err(PasteError::AlreadyExists);
         }
 

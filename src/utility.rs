@@ -32,5 +32,5 @@ pub fn pseudoid_hexstring() -> String {
 }
 
 pub fn random_string() -> String {
-    return hash_string(pseudoid_hexstring());
+    hash_string(pseudoid_hexstring())
 }

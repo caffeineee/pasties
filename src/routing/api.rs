@@ -34,7 +34,7 @@ async fn create_request(
     match res {
         Ok(_) => Ok((
             StatusCode::CREATED,
-            [("HX-Redirect", format!("{}", url))],
+            [("HX-Redirect", url.to_string())],
             "Paste created successfully",
         )
             .into_response()),
