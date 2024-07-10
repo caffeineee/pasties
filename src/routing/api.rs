@@ -1,11 +1,18 @@
 //! `routing::api` responds to requests that should return serialized data to the client. It creates an interface for the `PasteManager` CRUD struct defined in `model`
 use askama_axum::{IntoResponse, Response};
 use axum::{
-    extract::{Path, State}, http::StatusCode, response::Html, routing::{get, post}, Form, Json, Router
+    extract::{Path, State},
+    http::StatusCode,
+    response::Html,
+    routing::{get, post},
+    Form, Json, Router,
 };
 use serde::Deserialize;
 
-use crate::{markdown::render_markdown, model::{PasteCreate, PasteDelete, PasteError, PasteManager, PasteReturn}};
+use crate::{
+    markdown::render_markdown,
+    model::{PasteCreate, PasteDelete, PasteError, PasteManager, PasteReturn},
+};
 use super::pages;
 
 pub fn routes(manager: PasteManager) -> Router {
@@ -61,11 +68,9 @@ pub async fn view_request(
 
 #[derive(Deserialize)]
 pub struct StringForm {
-    content: String
+    content: String,
 }
 
-pub async fn markdown_render_request(
-    Form(markdown): Form<StringForm>
-) -> Html<String> {
+pub async fn markdown_render_request(Form(markdown): Form<StringForm>) -> Html<String> {
     Html(render_markdown(markdown.content))
 }
