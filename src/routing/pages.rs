@@ -11,7 +11,7 @@ use axum::{
     Router,
 };
 
-use crate::model::{PasteManager, PasteReturn};
+use crate::{markdown::render_markdown, model::{PasteManager, PasteReturn}};
 
 pub fn routes(manager: PasteManager) -> Router {
     Router::new()
@@ -43,13 +43,23 @@ pub fn asset_routes() -> Router {
                 }
             }),
         )
+        .route(
+            "/fonts/cascadia_code.css",
+            get(|| async {
+                let stylesheet = fs::read_to_string("./assets/fonts/cascadia_code/cascadia_code.css");
+                match stylesheet {
+                    Err(e) => panic!("FATAL: Reading the Cascadia Code font stylesheet failed: {e}"),
+                    Ok(s) => (StatusCode::OK, [(header::CONTENT_TYPE, "text/css")], s),
+                }
+            }),
+        )
 }
 
 #[derive(Template)]
 #[template(path = "paste.html")]
 struct PasteView {
     title: String,
-    paste: PasteReturn,
+    content: String,
 }
 
 #[derive(Template)]
@@ -79,10 +89,10 @@ async fn view_paste_by_url(
     State(manager): State<PasteManager>,
 ) -> impl IntoResponse {
     match manager.get_paste_by_url(url).await {
-        Ok(p) => {
+        Ok(paste) => {
             let paste_render = PasteView {
-                title: p.url.to_string(),
-                paste: p,
+                title: paste.url.to_string(),
+                content: render_markdown(paste.content),
             };
             Html(paste_render.render().unwrap())
         }

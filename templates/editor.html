@@ -8,32 +8,30 @@
 {% endblock %}
 
 {% block head %}
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap" rel="stylesheet">
 {% endblock %}
 
 {% block container %}
-    <div class="editor-container">
+    <div class="editor-container" x-data="{previewtab:  false}">
+        <blockquote id="info-modal"></blockquote>
         <nav>
             <div>
-                <a href="">edit</a>
-                <a href="">preview</a>
+                <a @click="previewtab=false" :class="previewtab ? '' : 'active'">edit</a>
+                <a @click="previewtab=true" :class="previewtab ? 'active' : ''" hx-post="/api/render" hx-include="[name='content']" hx-target="#preview" hx-swap="innerHTML">preview</a>
             </div>
             <div>
-                <a href="" hx-post="/api" hx-trigger="click" hx-include="[name='url'], [name='content'], [name='password']" hx-target="#error-modal">publish</a>
+                <a hx-post="/api" hx-trigger="click" hx-include="[name='url'], [name='content'], [name='password']" hx-target="#info-modal" hx-swap="innerHTML">publish</a>
             </div>
         </nav>
-        <section>
-            <textarea name="content" id="editor">{% if paste.is_some() %}{% let p = paste.clone().unwrap() %}{{ p.content }}{% endif %}</textarea>
-            <div id="preview">
-
-            </div>
+        <article>
+            <div id="preview" x-show="previewtab"></div>
+            <textarea name="content" id="editor"  x-show="!previewtab">{% if paste.is_some() %}{% let p = paste.clone().unwrap() %}{{ p.content|safe }}{% endif %}</textarea>
+        </article>
+        <section class="paste-options">
+            <input type="text" name="url" id="custom-url" placeholder="custom url">
+            <input type="text" name="password" id="password" placeholder="edit password">
         </section>
-        <div class="metadata-inputs">
-            <input type="text" name="url" id="custom-url" placeholder="Custom URL">
-            <input type="text" name="password" id="password" placeholder="Edit password">
-        </div>
-        <blockquote id="error-modal"></blockquote>
     </div>
 {% endblock %}

@@ -6,6 +6,12 @@
 
 {% block container %}
     <div class="paste-container">
-        {{ paste.content }}
+        <blockquote id="info-modal"></blockquote>
+        <article>
+            {{ content|safe }}
+        </article>
+        <section class="paste-options">
+            <button>Edit</button>
+        </section>
     </div>
 {% endblock %}
