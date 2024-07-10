@@ -11,7 +11,7 @@ use serde::Deserialize;
 
 use crate::{
     markdown::render_markdown,
-    model::{PasteCreate, PasteDelete, PasteError, PasteManager, PasteReturn},
+    model::{PasteCreate, PasteDelete, PasteError, PasteManager, PasteReturn, PasteUpdate},
 };
 use super::pages;
 
@@ -20,8 +20,9 @@ pub fn routes(manager: PasteManager) -> Router {
         .route(
             "/",
             get(|| async { "This is a route reserved for the pasties API.".to_string() })
-                .delete(delete_request)
-                .post(create_request),
+                .post(create_request)
+                .put(update_request)
+                .delete(delete_request),
         )
         .route("/:url", get(view_request))
         .route("/render", post(markdown_render_request))
@@ -40,6 +41,23 @@ async fn create_request(
             StatusCode::CREATED,
             [("HX-Redirect", url.to_string())],
             "Paste created successfully",
+        )
+            .into_response()),
+        Err(e) => Err(e),
+    }
+}
+
+async fn update_request(
+    State(manager): State<PasteManager>,
+    Form(paste_to_update): Form<PasteUpdate>,
+) -> Result<Response, PasteError> {
+    let url = paste_to_update.url.clone();
+    let res = manager.update_paste(paste_to_update).await;
+    match res {
+        Ok(_) => Ok((
+            StatusCode::OK,
+            [("HX-Redirect", format!("../{}", url))],
+            "Paste updated successfully",
         )
             .into_response()),
         Err(e) => Err(e),

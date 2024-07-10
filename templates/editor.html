@@ -22,7 +22,11 @@
                 <a @click="previewtab=true" :class="previewtab ? 'active' : ''" hx-post="/api/render" hx-include="[name='content']" hx-target="#preview" hx-swap="innerHTML">preview</a>
             </div>
             <div>
+                {% if paste.is_some() %}
+                <a hx-put="/api" hx-trigger="click" hx-include="[name='url'], [name='content'], [name='password']" hx-target="#info-modal" hx-swap="innerHTML">publish</a>
+                {% else %}
                 <a hx-post="/api" hx-trigger="click" hx-include="[name='url'], [name='content'], [name='password']" hx-target="#info-modal" hx-swap="innerHTML">publish</a>
+                {% endif %}
             </div>
         </nav>
         <article>
@@ -30,8 +34,13 @@
             <textarea name="content" id="editor"  x-show="!previewtab">{% if paste.is_some() %}{% let p = paste.clone().unwrap() %}{{ p.content|safe }}{% endif %}</textarea>
         </article>
         <section class="paste-options">
+            {% if paste.is_some() %}
+            <input type="text" name="url" id="custom-url" value="{{ paste.as_ref().unwrap().url }}" class="disabled">
+            <input type="text" name="password" id="password" placeholder="edit password">
+            {% else %}
             <input type="text" name="url" id="custom-url" placeholder="custom url">
             <input type="text" name="password" id="password" placeholder="edit password">
+            {% endif %}
         </section>
     </div>
 {% endblock %}

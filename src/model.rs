@@ -27,9 +27,53 @@ pub struct Paste {
     pub date_edited:    i64,
 }
 
+impl TryFrom<PasteCreate> for Paste {
+    type Error = PasteError;
+    fn try_from(mut paste: PasteCreate) -> Result<Self, PasteError> {
+        // Provide defaults
+        if paste.url.is_empty() {
+            paste.url = utility::random_string().chars().take(10).collect();
+        }
+        if paste.password.is_empty() {
+            paste.password = utility::random_string().chars().take(10).collect();
+        }
+        // validate `paste.url`
+        if paste.url.len() > 250 {
+            return Err(PasteError::InvalidUrl);
+        }
+        if !paste
+            .url
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
+        {
+            return Err(PasteError::InvalidUrl);
+        }
+        // validate `paste.content` by length
+        if paste.content.len() > 200_000 || paste.content.is_empty() {
+            return Err(PasteError::InvalidContent);
+        }
+        Ok(Self {
+            id:             pseudoid().abs(),
+            url:            paste.url,
+            content:        paste.content,
+            password_hash:  hash_string(paste.password),
+            date_published: unix_timestamp(),
+            date_edited:    unix_timestamp(),
+        })
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 /// Paste data specified by the user, to be handled by `PasteManager` and recorded in the database
 pub struct PasteCreate {
+    pub url:     String,
+    pub content: String,
+    password:    String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+/// Data to update a paste specified by the user
+pub struct PasteUpdate {
     pub url:     String,
     pub content: String,
     password:    String,
@@ -155,48 +199,36 @@ impl PasteManager {
     /// * `paste`: a `PasteCreate` instance
     ///
     /// **Returns:** `Result<(), PasteError>`
-    pub async fn create_paste(&self, mut paste: PasteCreate) -> Result<(), PasteError> {
-        // check lengths
-        if paste.url.len() > 250 {
-            return Err(PasteError::InvalidUrl);
-        }
-        if paste.content.len() > 200_000 || paste.content.is_empty() {
-            return Err(PasteError::InvalidContent);
-        }
-        if !paste
-            .url
-            .bytes()
-            .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
-        {
-            return Err(PasteError::InvalidUrl);
-        }
-
-        // Provide defaults
-        if paste.url.is_empty() {
-            paste.url = utility::random_string().chars().take(10).collect();
-        }
-        if paste.password.is_empty() {
-            paste.password = utility::random_string().chars().take(10).collect();
-        }
-
+    pub async fn create_paste(&self, paste: PasteCreate) -> Result<(), PasteError> {
         if database::retrieve_paste(&self.pool, &paste.url)
             .await
             .is_ok()
         {
             return Err(PasteError::AlreadyExists);
         }
-
-        let paste_to_insert = Paste {
-            id:             pseudoid().abs(),
-            url:            paste.url,
-            content:        paste.content,
-            password_hash:  hash_string(paste.password),
-            date_published: unix_timestamp(),
-            date_edited:    unix_timestamp(),
+        let paste_to_insert: Paste = match paste.try_into() {
+            Ok(paste) => paste,
+            Err(err) => return Err(err),
         };
-
         // TODO: Handle errors out here
         match database::insert_paste(&self.pool, paste_to_insert).await {
+            Ok(_) => Ok(()),
+            Err(e) => Err(PasteError::Other(format!("{:?}", e))),
+        }
+    }
+
+    pub async fn update_paste(&self, paste: PasteUpdate) -> Result<(), PasteError> {
+        let original_paste = match database::retrieve_paste(&self.pool, &paste.url).await {
+            Ok(paste) => paste,
+            Err(_) => return Err(PasteError::NotFound),
+        };
+        if hash_string(paste.password.to_owned()) != original_paste.password_hash {
+            return Err(PasteError::PasswordIncorrect);
+        }
+        if paste.content.len() > 200_000 || paste.content.is_empty() {
+            return Err(PasteError::InvalidContent);
+        }
+        match database::update_paste(&self.pool, paste).await {
             Ok(_) => Ok(()),
             Err(e) => Err(PasteError::Other(format!("{:?}", e))),
         }

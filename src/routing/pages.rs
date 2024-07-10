@@ -20,6 +20,7 @@ pub fn routes(manager: PasteManager) -> Router {
     Router::new()
         .route("/", get(root))
         .route("/:url", get(view_paste_by_url))
+        .route("/:url/edit", get(edit_paste_by_url))
         .with_state(manager)
 }
 
@@ -64,8 +65,8 @@ pub fn asset_routes() -> Router {
 #[derive(Template)]
 #[template(path = "paste.html")]
 struct PasteView {
-    title:   String,
-    content: String,
+    title: String,
+    paste: PasteReturn,
 }
 
 #[derive(Template)]
@@ -90,15 +91,40 @@ pub async fn root() -> impl IntoResponse {
     Html(editor.render().unwrap())
 }
 
+async fn edit_paste_by_url(
+    Path(url): Path<String>,
+    State(manager): State<PasteManager>,
+) -> impl IntoResponse {
+    match manager.get_paste_by_url(url).await {
+        Ok(paste) => Html(
+            EditorView {
+                title: paste.url.clone(),
+                paste: Some(paste),
+            }
+            .render()
+            .unwrap(),
+        ),
+        Err(e) => Html(
+            InfoView {
+                title:   "Error".to_string(),
+                content: e.to_string(),
+            }
+            .render()
+            .unwrap(),
+        ),
+    }
+}
+
 async fn view_paste_by_url(
     Path(url): Path<String>,
     State(manager): State<PasteManager>,
 ) -> impl IntoResponse {
     match manager.get_paste_by_url(url).await {
-        Ok(paste) => {
+        Ok(mut paste) => {
+            paste.content = render_markdown(paste.content);
             let paste_render = PasteView {
-                title:   paste.url.to_string(),
-                content: render_markdown(paste.content),
+                title: paste.url.to_string(),
+                paste,
             };
             Html(paste_render.render().unwrap())
         }

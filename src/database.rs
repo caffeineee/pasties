@@ -2,12 +2,13 @@
 
 use sqlx::{Row, SqlitePool};
 
-use crate::model::{Paste, PasteReturn};
+use crate::model::{Paste, PasteReturn, PasteUpdate};
 
 #[derive(Debug)]
 pub enum DatabaseError {
     Retrieval(sqlx::Error),
     Insert(sqlx::Error),
+    Update(sqlx::Error),
     Delete(sqlx::Error),
     BadRequest(sqlx::Error),
 }
@@ -70,6 +71,24 @@ pub async fn insert_paste(pool: &SqlitePool, paste: Paste) -> Result<PasteReturn
     {
         Ok(_) => Ok(paste_return),
         Err(e) => Err(DatabaseError::Insert(e)),
+    }
+}
+
+/// Updates a paste in a database using the specified pool.
+///
+/// **Arguments**
+/// * `pool`: an `&SqlitePool` reference
+/// * `paste`: a `PasteUpdate` struct
+pub async fn update_paste(pool: &SqlitePool, paste: PasteUpdate) -> Result<(), DatabaseError> {
+    let query = "update pastes set content=? where url=?";
+    match sqlx::query(query)
+        .bind(paste.content)
+        .bind(paste.url)
+        .execute(pool)
+        .await
+    {
+        Ok(_) => Ok(()),
+        Err(e) => Err(DatabaseError::Update(e)),
     }
 }
 

@@ -3,6 +3,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use rand::Rng;
 use sha2::{Digest, Sha256};
 
+/// Retrieves the current time as a Unix timestamp.
 pub fn unix_timestamp() -> i64 {
     let now = SystemTime::now();
     let since_epoch = now
@@ -11,6 +12,7 @@ pub fn unix_timestamp() -> i64 {
     since_epoch.as_secs().try_into().unwrap()
 }
 
+/// Computes the SHA256 hash of the provided string
 pub fn hash_string(input: String) -> String {
     let mut hasher = Sha256::new();
     hasher.update(input.into_bytes());
@@ -18,6 +20,7 @@ pub fn hash_string(input: String) -> String {
     format!("{:x}", hash)
 }
 
+/// Generates a random i64 value
 pub fn pseudoid() -> i64 {
     rand::thread_rng().gen::<i64>()
 }
