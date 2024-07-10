@@ -24,7 +24,6 @@ pub fn routes(manager: PasteManager) -> Router {
         .with_state(manager)
 }
 
-#[debug_handler]
 async fn create_request(
     State(manager): State<PasteManager>,
     Form(paste_to_create): Form<PasteCreate>,

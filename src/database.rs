@@ -1,4 +1,4 @@
-//! `database` is responsible for handling a connection to an SQLite database that stores pastes
+//! `database` a helper module for handling SQL queries via a connection pool to an SQLite database
 
 use sqlx::{Row, SqlitePool};
 
@@ -12,6 +12,9 @@ pub enum DatabaseError {
     BadRequest(sqlx::Error),
 }
 
+/// Connects to the database at `<project root>/main.db` and returns an `SqlitePool` for other database helper functions to use
+/// Also handles creating the schema for paste storage, if the table does not already exist
+/// **Panics** if anything goes wrong, as the lack of an `SqlitePool` is a non-recoverable error for pasties
 pub async fn init_database() -> SqlitePool {
     // Connect to the SQLite
     let pool = match SqlitePool::connect("sqlite://main.db").await {
@@ -40,10 +43,10 @@ pub async fn init_database() -> SqlitePool {
     }
 }
 
-/// Creates a new paste record in the database using the specified pool.
+/// Creates a new paste record in a database using the specified pool.
 ///
 /// **Arguments**
-/// * `pool`: an `&SqlitePool` reference towards the database
+/// * `pool`: an `&SqlitePool` reference
 /// * `paste`: a `Paste` struct to create a record of
 pub async fn insert_paste(pool: &SqlitePool, paste: Paste) -> Result<PasteReturn, DatabaseError> {
     let paste_return = paste.clone().into();
@@ -70,10 +73,10 @@ pub async fn insert_paste(pool: &SqlitePool, paste: Paste) -> Result<PasteReturn
     }
 }
 
-/// Deletes a paste from the database using the specified pool.
+/// Deletes a paste from a database using the specified pool. The identification of the paste happens through its URL, which is guaranteed to be unique by the `model` module
 ///
 /// **Arguments**
-/// * `pool`: an `&SqlitePool` reference towards the database
+/// * `pool`: an `&SqlitePool` reference
 /// * `url`: a paste's custom URL that uniquely identifies it
 pub async fn delete_paste(pool: &SqlitePool, url: &String) -> Result<(), DatabaseError> {
     let query = "delete from pastes where url=?";
@@ -83,10 +86,10 @@ pub async fn delete_paste(pool: &SqlitePool, url: &String) -> Result<(), Databas
     }
 }
 
-/// Fetches a paste from the database using the specified pool.
+/// Fetches a paste from a database using the specified pool. The identification of the paste happens through its URL, which is guaranteed to be unique by the `model` module
 ///
 /// **Arguments**
-/// * `pool`: an `&SqlitePool` reference towards the database
+/// * `pool`: an `&SqlitePool` reference
 /// * `url`: a paste's custom URL
 pub async fn retrieve_paste(pool: &SqlitePool, url: &String) -> Result<Paste, DatabaseError> {
     let query = "select * from pastes where url=?1";

@@ -46,17 +46,17 @@ pub fn asset_routes() -> Router {
 }
 
 #[derive(Template)]
-#[template(path = "editor.html")]
-struct EditorView {
-    title: String,
-    paste: Option<PasteReturn>,
-}
-
-#[derive(Template)]
 #[template(path = "paste.html")]
 struct PasteView {
     title: String,
     paste: PasteReturn,
+}
+
+#[derive(Template)]
+#[template(path = "editor.html")]
+struct EditorView {
+    title: String,
+    paste: Option<PasteReturn>,
 }
 
 #[derive(Template)]
