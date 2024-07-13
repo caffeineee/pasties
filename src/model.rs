@@ -17,7 +17,7 @@ use crate::{
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-/// The complete representation of a paste from the database
+/// The complete representation of a paste from the database. Used to interface with the `database` module, is never served to the end user
 pub struct Paste {
     pub id:             i64,
     pub url:            String,
@@ -27,44 +27,17 @@ pub struct Paste {
     pub date_edited:    i64,
 }
 
-impl TryFrom<PasteCreate> for Paste {
-    type Error = PasteError;
-    fn try_from(mut paste: PasteCreate) -> Result<Self, PasteError> {
-        // Provide defaults
-        if paste.url.is_empty() {
-            paste.url = utility::random_string().chars().take(10).collect();
-        }
-        if paste.password.is_empty() {
-            paste.password = utility::random_string().chars().take(10).collect();
-        }
-        // validate `paste.url`
-        if paste.url.len() > 250 {
-            return Err(PasteError::InvalidUrl);
-        }
-        if !paste
-            .url
-            .bytes()
-            .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
-        {
-            return Err(PasteError::InvalidUrl);
-        }
-        // validate `paste.content` by length
-        if paste.content.len() > 200_000 || paste.content.is_empty() {
-            return Err(PasteError::InvalidContent);
-        }
-        Ok(Self {
-            id:             pseudoid().abs(),
-            url:            paste.url,
-            content:        paste.content,
-            password_hash:  hash_string(paste.password),
-            date_published: unix_timestamp(),
-            date_edited:    unix_timestamp(),
-        })
-    }
+#[derive(Serialize, Deserialize, Debug, Clone)]
+/// Partial representation of a paste from the database. Used to handle interactions with existing pastes. Used to interface with the `database` module, is never served to the end user
+pub struct ExistingPaste {
+    pub url:           String,
+    pub password_hash: String,
+    pub content:       String,
+    pub date_edited:   i64,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-/// Paste data specified by the user, to be handled by `PasteManager` and recorded in the database
+/// Paste data specified by the user to be used to create a new paste
 pub struct PasteCreate {
     pub url:     String,
     pub content: String,
@@ -72,11 +45,18 @@ pub struct PasteCreate {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-/// Data to update a paste specified by the user
+/// Paste data specified by the user, used to update existing pastes
 pub struct PasteUpdate {
     pub url:     String,
     pub content: String,
     password:    String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+/// Paste data specified by the user, used to delete a paste
+pub struct PasteDelete {
+    pub url:      String,
+    pub password: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -97,13 +77,6 @@ impl From<Paste> for PasteReturn {
             date_edited:    paste.date_edited,
         }
     }
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-/// Data to delete a paste specified by the user, to be handled by `PasteManager`
-pub struct PasteDelete {
-    pub url:      String,
-    pub password: String,
 }
 
 /// Various errors that may occur while processing requests made through `PasteManager`
@@ -199,24 +172,67 @@ impl PasteManager {
     /// * `paste`: a `PasteCreate` instance
     ///
     /// **Returns:** `Result<(), PasteError>`
-    pub async fn create_paste(&self, paste: PasteCreate) -> Result<(), PasteError> {
+    pub async fn create_paste(
+        &self,
+        mut paste: PasteCreate,
+    ) -> Result<(String, String), PasteError> {
+        // Provide default URL
+        if paste.url.is_empty() {
+            let mut random_id: String = utility::random_string().chars().take(10).collect();
+            while database::retrieve_paste(&self.pool, &random_id)
+                .await
+                .is_ok()
+            {
+                random_id = utility::random_string().chars().take(10).collect();
+            }
+            paste.url = random_id;
+        }
+        // Throw an error if a paste with the specified URL already exists
         if database::retrieve_paste(&self.pool, &paste.url)
             .await
             .is_ok()
         {
             return Err(PasteError::AlreadyExists);
         }
-        let paste_to_insert: Paste = match paste.try_into() {
-            Ok(paste) => paste,
-            Err(err) => return Err(err),
+        // Provide default password
+        if paste.password.is_empty() {
+            paste.password = utility::random_string().chars().take(10).collect();
+        }
+        // validate `paste.url`
+        if paste.url.len() > 250 {
+            return Err(PasteError::InvalidUrl);
+        }
+        if !paste
+            .url
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
+        {
+            return Err(PasteError::InvalidUrl);
+        }
+        // validate `paste.content` by length
+        if paste.content.len() > 200_000 || paste.content.is_empty() {
+            return Err(PasteError::InvalidContent);
+        }
+        let paste_to_insert = Paste {
+            id:             pseudoid(),
+            url:            paste.url.to_owned(),
+            password_hash:  hash_string(paste.password.to_owned()),
+            content:        paste.content,
+            date_published: unix_timestamp(),
+            date_edited:    unix_timestamp(),
         };
-        // TODO: Handle errors out here
         match database::insert_paste(&self.pool, paste_to_insert).await {
-            Ok(_) => Ok(()),
+            Ok(_) => Ok((paste.url, paste.password)),
             Err(e) => Err(PasteError::Other(format!("{:?}", e))),
         }
     }
 
+    /// Updates a `Paste` in `PasteManager` by its `url`
+    ///
+    /// **Arguments**:
+    /// * `paste_url`: a paste's custom URL
+    ///
+    /// **Returns:** `Result<PasteReturn, PasteError>`
     pub async fn update_paste(&self, paste: PasteUpdate) -> Result<(), PasteError> {
         let original_paste = match database::retrieve_paste(&self.pool, &paste.url).await {
             Ok(paste) => paste,
@@ -228,7 +244,13 @@ impl PasteManager {
         if paste.content.len() > 200_000 || paste.content.is_empty() {
             return Err(PasteError::InvalidContent);
         }
-        match database::update_paste(&self.pool, paste).await {
+        let updated_paste = ExistingPaste {
+            url:           paste.url.to_owned(),
+            password_hash: hash_string(paste.password),
+            content:       paste.content,
+            date_edited:   unix_timestamp(),
+        };
+        match database::update_paste(&self.pool, paste.url, updated_paste).await {
             Ok(_) => Ok(()),
             Err(e) => Err(PasteError::Other(format!("{:?}", e))),
         }

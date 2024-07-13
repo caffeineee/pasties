@@ -1,12 +1,15 @@
 //! `routing::api` responds to requests that should return serialized data to the client. It creates an interface for the `PasteManager` CRUD struct defined in `model`
+use std::fs;
+
 use askama_axum::{IntoResponse, Response};
 use axum::{
     extract::{Path, State},
-    http::StatusCode,
+    http::{header, StatusCode},
     response::Html,
     routing::{get, post},
     Form, Json, Router,
 };
+use axum_macros::debug_handler;
 use serde::Deserialize;
 
 use crate::{
@@ -14,6 +17,21 @@ use crate::{
     model::{PasteCreate, PasteDelete, PasteError, PasteManager, PasteReturn, PasteUpdate},
 };
 use super::pages;
+
+pub struct ApiReturn {
+    status:        StatusCode,
+    message:       String,
+    htmx_redirect: Option<String>,
+}
+
+impl IntoResponse for ApiReturn {
+    fn into_response(self) -> Response {
+        match self.htmx_redirect {
+            Some(header) => (self.status, [("HX-Redirect", header)], self.message).into_response(),
+            None => (self.status, self.message).into_response(),
+        }
+    }
+}
 
 pub fn routes(manager: PasteManager) -> Router {
     Router::new()
@@ -34,16 +52,18 @@ async fn create_request(
     State(manager): State<PasteManager>,
     Form(paste_to_create): Form<PasteCreate>,
 ) -> Result<Response, PasteError> {
-    let url = paste_to_create.url.clone();
     let res = manager.create_paste(paste_to_create).await;
     match res {
-        Ok(_) => Ok((
-            StatusCode::CREATED,
-            [("HX-Redirect", url.to_string())],
-            "Paste created successfully",
-        )
-            .into_response()),
-        Err(e) => Err(e),
+        Ok(paste_data) => Ok(ApiReturn {
+            status:        StatusCode::CREATED,
+            message:       "Paste created successfully".to_string(),
+            htmx_redirect: Some(format!(
+                "/{}?message=PasteCreated&content={}",
+                paste_data.0, paste_data.1
+            )),
+        }
+        .into_response()),
+        Err(err) => Err(err),
     }
 }
 
@@ -54,12 +74,12 @@ async fn update_request(
     let url = paste_to_update.url.clone();
     let res = manager.update_paste(paste_to_update).await;
     match res {
-        Ok(_) => Ok((
-            StatusCode::OK,
-            [("HX-Redirect", format!("../{}", url))],
-            "Paste updated successfully",
-        )
-            .into_response()),
+        Ok(_) => Ok(ApiReturn {
+            status:        StatusCode::OK,
+            message:       "Paste updated successfully".to_string(),
+            htmx_redirect: Some(format!("/{}?message=PasteUpdated", url)),
+        }
+        .into_response()),
         Err(e) => Err(e),
     }
 }

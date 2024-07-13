@@ -9,10 +9,17 @@
     <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
     <link rel="stylesheet" href="/assets/style.css">
     {% block head %}{% endblock %}
-    <script src="https://unpkg.com/htmx.org@1.9.12" integrity="sha384-ujb1lZYygJmzgSwoxRggbCHcjc0rB2XoQrxeTUQyRjrOnlCoYta87iKBWq3EsdM2" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.12" integrity="sha384-ujb1lZYygJmzgSwoxRggbCHcjc0rB2XoQrxeTUQyRjrOnlCoYta87iKBWq3EsdM2" crossorigin="anonymous" defer></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
 <body>
+    <div id="welcome-modal" class="hidden">
+        <div>
+            <h1>Pasties</h1>
+            <p>pasties is a small markdown-equipped pastebin site written in rust</p>
+            <button hx-on:click="document.getElementById('welcome-modal').classList.add('hidden')">Close</button>
+        </div>
+    </div>
     <main>
         {% block container %}
         {% endblock %}
@@ -20,6 +27,8 @@
             <p>
                 Pasties
             </p>
+            ·
+            <a hx-on:click="document.getElementById('welcome-modal').classList.remove('hidden')">Information</a>
         </footer>
     </main>
 </body>

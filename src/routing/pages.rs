@@ -1,15 +1,16 @@
 //! `routing::pages` responds to requests that should return rendered HTML (or its assets) to the client
-
+#[allow(non_camel_case_types)]
 use std::fs;
 
 use askama_axum::Template;
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::{header, StatusCode},
     response::{Html, IntoResponse},
     routing::get,
     Router,
 };
+use serde::Deserialize;
 
 use crate::{
     markdown::render_markdown,
@@ -62,11 +63,24 @@ pub fn asset_routes() -> Router {
         )
 }
 
+#[derive(Clone, Copy, Deserialize, Debug)]
+enum ModalType {
+    PasteCreated,
+    PasteUpdated,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+struct Modal {
+    message: ModalType,
+    content: Option<String>,
+}
+
 #[derive(Template)]
 #[template(path = "paste.html")]
 struct PasteView {
     title: String,
     paste: PasteReturn,
+    modal: Option<Modal>,
 }
 
 #[derive(Template)]
@@ -117,14 +131,17 @@ async fn edit_paste_by_url(
 
 async fn view_paste_by_url(
     Path(url): Path<String>,
+    modal_content: Option<Query<Modal>>,
     State(manager): State<PasteManager>,
 ) -> impl IntoResponse {
     match manager.get_paste_by_url(url).await {
         Ok(mut paste) => {
+            let modal = modal_content.map(|Query(modal)| modal);
             paste.content = render_markdown(paste.content);
             let paste_render = PasteView {
                 title: paste.url.to_string(),
                 paste,
+                modal,
             };
             Html(paste_render.render().unwrap())
         }

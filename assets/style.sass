@@ -1,3 +1,5 @@
+// THEMING & VARIABLES
+    
 $background-color: hsl(0, 0%, 4%)
 $background-color-raised: hsl(0, 0%, 7%)
 $background-color-medium-raised: hsl(0, 0%, 14%)
@@ -39,6 +41,8 @@ $padding-xs: 0.5rem
     :root
         font-family: InterVariable, sans-serif
 
+// LAYOUT
+
 body
     min-height: 100vh
     display: grid
@@ -50,27 +54,29 @@ body
 main
     height: 100%
     width: calc(min(60ch, 100% - 2*$padding-xs))
+    padding: $padding-xs 0 $padding-l 0
+
     display: flex
     flex-direction: column
     justify-content: space-between
+    gap: $padding-l
 
     > *:first-child
-        min-height: 25%
-        margin-top: $padding-xs
-
-        > *:not(:last-child)
-            margin-bottom: $padding-xs
+        flex-grow: 1
+        display: flex
+        flex-direction: column
+        gap: $padding-xs
         > *
             border-radius: $border-radius
+            overflow: hidden
 
-        > article
-            padding: $padding-l
-            background-color: $background-color-raised
-            > *
-                padding: 0
+    article
+        padding: $padding-l
+        background-color: $background-color-raised
+        > *
+            padding: 0
 
-    > :is(.paste-container, .editor-container) > article
-        min-height: 100%
+// CONTAINER RELATED ELEMENTS
 
 nav
     padding: calc(0.618 * $padding-xs)
@@ -90,30 +96,18 @@ nav
     a.active, a:hover
         background-color: $background-color-block
 
-.paste-options 
-    display: flex
-    gap: $padding-xs
-    input, button, a
-        padding: $padding-xs
-        background-color: $background-color-raised
-        border-radius: $border-radius
-    input
-        outline: none
-        width: 0px
-        flex: 0 1 180px
-    input:focus
-        outline: 1px solid $foreground-color-muted-4
-    button, a
-        padding: $padding-xs $padding-s  
+.paste-container
+    min-height: 25%
 
 .editor-container
     article
+        flex-grow: 1
         display: grid
         grid-template-areas: 'stack'
         padding: 0
         > *
             grid-area: stack
-            padding: $padding-s
+            padding: $padding-l
     textarea
         border: none
         overflow: scroll
@@ -126,15 +120,28 @@ nav
     #preview
         z-index: 99
 
-#info-modal
-    display: none
+.paste-options 
+    display: flex
+    gap: $padding-xs
+    input
+        outline: none
+        width: 0px
+        flex: 0 1 180px
+
+.info-container
+    display: grid
+    place-content: center
+
+// FOOTER
 
 footer
-    margin: $padding-s 0 $padding-m 0
+    container-type: inline-size
+    flex-grow: 0
 
     display: flex
     align-items: center
     justify-content: center
+    gap: 0.4rem
 
     color: $foreground-color-muted-2
     $dash-spacing: 1rem
@@ -142,19 +149,134 @@ footer
     &::before, &::after
         content: ""
         display: block
-        width: 20vw
+        width: 30cqi
         border-top: 1px solid $foreground-color-muted-3
     &::before
         margin-right: $dash-spacing
     &::after
         margin-left: $dash-spacing
 
-input, button
+    a 
+        all: unset
+        cursor: pointer
+
+#info-modal:empty
+    display: none
+
+#welcome-modal
+    position: absolute
+    top: 0
+    left: 0
+    width: 100vw
+    height: 100vh
+    backdrop-filter: blur(2px)
+    display: grid
+    place-items: center
+    div
+        $modal-width: calc(min(40ch, 100cqi - 2*$padding-s))
+
+        background-color: $background-color-medium-raised
+        border-radius: $border-radius
+        width: $modal-width
+        padding-block: $padding-l
+
+        display: grid
+        grid-template-columns: [full-width-start] $padding-l [content-start] 1fr [content-end] $padding-l [full-width-start]
+        gap: 1rem 0 
+        align-items: baseline
+        justify-items: start
+
+        > *
+            grid-column: content
+            margin: 0
+
+        h1
+            width: 100%
+            position: relative
+            grid-column: full-width
+            height: 6rem
+            z-index: 1
+            display: grid
+            place-items: center
+        h1::selection
+            background-color: inherit
+        h1::before
+            content: ""
+            position: absolute
+            z-index: -1
+            inset: 0
+            width: 100%
+            background-image: linear-gradient(0deg,#d79921 0%,#d79921 25%,#d65d0e 25%,#d65d0e 50%,#cc241d 50%,#cc241d 75%,#b16286 75%,#b16286 100%)
+    button
+        background-color: $background-color-block
+
+    &:empty
+        display: none
+    &.hidden
+        display: none
+
+// NATIVE ELEMENTS
+
+input, button, a
     all: unset
+    padding: $padding-xs
+    background-color: $background-color-raised
+    border-radius: $border-radius
 button, a
+    padding: $padding-xs $padding-s  
     cursor: pointer
     color: inherit
     text-decoration: none
 input.disabled
     pointer-events: none
     color: $foreground-color-muted
+    background-image: repeating-linear-gradient(45deg, $background-color-block 0, $background-color-block 1rem, $background-color-medium-raised 1rem, $background-color-medium-raised 2rem)
+    opacity: 0.5
+input:focus
+    outline: 1px solid $foreground-color-muted-4
+
+blockquote
+    background: $background-color-block
+    border-radius: $border-radius
+    color: #dedede
+    padding: $padding-s
+
+code 
+    font-family: JetBrains Mono
+    background-color: $background-color-medium-raised
+    line-height: 1.7
+    padding: 0.1rem 0.3rem
+    border-radius: 0.1rem
+
+p
+    line-height: 1.5
+
+h1
+    font-size: 2.986rem
+    font-weight: 900
+    margin-block: 0.3em
+
+h2
+    font-size: 2.488rem
+    font-weight: 900
+    margin-block: 0.3em
+
+h3
+    font-size: 2.074rem
+    font-weight: 800
+    margin-block: 0.3em
+
+h4
+    font-size: 1.728rem
+    font-weight: 700
+    margin-block: 0.3em
+
+h5
+    font-size: 1.44rem
+    font-weight: 700
+    margin-block: 0.3em
+
+h6
+    font-size: 1.2rem
+    font-weight: 700
+    margin-block: 0.3em
