@@ -6,18 +6,21 @@
 
 {% block container %}
     <div class="paste-container">
-        {% if let Some(modal) = self.modal.as_ref() %}
-        {% match modal.message %}
-            {% when PasteUpdated %}
-            <blockquote id="info-modal">
-                <b>Your paste was updated successfully!</b>
-            </blockquote>
-            {% when PasteCreated %}
-            <blockquote id="info-modal">
-                <b>Paste created!</b> Do not lose your edit password, as you won't be able to recover it later: <code>{{ modal.content.as_ref().unwrap() }}</code>
-            </blockquote>
-        {% endmatch %}
-        {% endif %}
+    {% if let Some(secret) = self.modal.secret %}
+        <blockquote id="info-modal">
+            <b>Paste created!</b> Do not lose your edit password, as you won't be able to recover it later: <code>{{ secret }}</code>
+        </blockquote>
+    {% endif %}
+    {% if let Some(_) = self.modal.updated %}
+        <blockquote id="info-modal">
+            <b>Your paste was updated successfully!</b>
+        </blockquote>
+    {% endif %}
+    {% if let Some(message) = self.modal.message %}
+        <blockquote id="info-modal">
+            {{ message }}
+        </blockquote>
+    {% endif %}
         <article>
             {{ paste.content|safe }} 
         </article>

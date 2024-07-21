@@ -66,9 +66,8 @@ main
         display: flex
         flex-direction: column
         gap: $padding-xs
-        > *
-            border-radius: $border-radius
-            overflow: hidden
+    > *:first-child > *, textarea
+        border-radius: $border-radius
 
     article
         padding: $padding-l
@@ -117,8 +116,6 @@ nav
 
         font-family: monospace
         color: $foreground-color
-    #preview
-        z-index: 99
 
 .paste-options 
     display: flex
@@ -126,7 +123,7 @@ nav
     input
         outline: none
         width: 0px
-        flex: 0 1 180px
+        flex: 1
 
 .info-container
     display: grid
@@ -165,6 +162,7 @@ footer
 
 #welcome-modal
     position: absolute
+    z-index: 99
     top: 0
     left: 0
     width: 100vw

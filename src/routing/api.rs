@@ -58,7 +58,7 @@ async fn create_request(
             status:        StatusCode::CREATED,
             message:       "Paste created successfully".to_string(),
             htmx_redirect: Some(format!(
-                "/{}?message=PasteCreated&content={}",
+                "/{}?secret={}",
                 paste_data.0, paste_data.1
             )),
         }
@@ -77,7 +77,7 @@ async fn update_request(
         Ok(_) => Ok(ApiReturn {
             status:        StatusCode::OK,
             message:       "Paste updated successfully".to_string(),
-            htmx_redirect: Some(format!("/{}?message=PasteUpdated", url)),
+            htmx_redirect: Some(format!("/{}?updated", url)),
         }
         .into_response()),
         Err(e) => Err(e),
