@@ -1,5 +1,4 @@
 //! `routing::pages` responds to requests that should return rendered HTML (or other website assets) to the client
-#[allow(non_camel_case_types)]
 use std::fs;
 
 use askama_axum::Template;
@@ -48,26 +47,13 @@ pub fn asset_routes() -> Router {
                 }
             }),
         )
-        .route(
-            "/fonts/cascadia_code.css",
-            get(|| async {
-                let stylesheet =
-                    fs::read_to_string("./assets/fonts/cascadia_code/cascadia_code.css");
-                match stylesheet {
-                    Err(e) => {
-                        panic!("FATAL: Reading the Cascadia Code font stylesheet failed: {e}")
-                    }
-                    Ok(s) => (StatusCode::OK, [(header::CONTENT_TYPE, "text/css")], s),
-                }
-            }),
-        )
 }
 
 #[derive(Deserialize, Debug, Clone)]
 struct Modal {
-    secret: Option<String>,
+    secret:  Option<String>,
     updated: Option<String>,
-    message: Option<String>
+    message: Option<String>,
 }
 
 #[derive(Template)]

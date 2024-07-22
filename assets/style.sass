@@ -118,12 +118,13 @@ nav
         color: $foreground-color
 
 .paste-options 
-    display: flex
+    display: grid
+    grid-template-columns: 1fr 1fr
     gap: $padding-xs
     input
         outline: none
-        width: 0px
-        flex: 1
+    > a
+        width: fit-content
 
 .info-container
     display: grid
@@ -156,6 +157,8 @@ footer
     a 
         all: unset
         cursor: pointer
+
+// MODALS
 
 #info-modal:empty
     display: none

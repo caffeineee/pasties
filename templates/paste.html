@@ -11,10 +11,16 @@
             <b>Paste created!</b> Do not lose your edit password, as you won't be able to recover it later: <code>{{ secret }}</code>
         </blockquote>
     {% endif %}
-    {% if let Some(_) = self.modal.updated %}
+    {% if let Some(updated) = self.modal.updated %}
+        {% if updated.is_empty() %}
         <blockquote id="info-modal">
             <b>Your paste was updated successfully!</b>
         </blockquote>
+        {% else %}
+        <blockquote id="info-modal">
+            <b>Your paste was updated successfully!</b> Do not lose your <b>new</b> edit password, as you won't be able to recover it later: <code>{{ updated }}</code>
+        </blockquote>
+        {% endif %}
     {% endif %}
     {% if let Some(message) = self.modal.message %}
         <blockquote id="info-modal">

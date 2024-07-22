@@ -47,9 +47,11 @@ pub struct PasteCreate {
 #[derive(Serialize, Deserialize, Debug)]
 /// Paste data specified by the user, used to update existing pastes
 pub struct PasteUpdate {
-    pub url:     String,
-    pub content: String,
-    password:    String,
+    pub url:          String,
+    pub password:     String,
+    pub content:      String,
+    pub new_url:      String,
+    pub new_password: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -66,6 +68,13 @@ pub struct PasteReturn {
     pub content:        String,
     pub date_published: i64,
     pub date_edited:    i64,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+/// Paste data to be used by the redirect after a new paste's creation
+pub struct NewPaste {
+    pub url:      String,
+    pub password: String,
 }
 
 impl From<Paste> for PasteReturn {
@@ -172,10 +181,7 @@ impl PasteManager {
     /// * `paste`: a `PasteCreate` instance
     ///
     /// **Returns:** `Result<(), PasteError>`
-    pub async fn create_paste(
-        &self,
-        mut paste: PasteCreate,
-    ) -> Result<(String, String), PasteError> {
+    pub async fn create_paste(&self, mut paste: PasteCreate) -> Result<NewPaste, PasteError> {
         // Provide default URL
         if paste.url.is_empty() {
             let mut random_id: String = utility::random_string().chars().take(10).collect();
@@ -222,7 +228,10 @@ impl PasteManager {
             date_edited:    unix_timestamp(),
         };
         match database::insert_paste(&self.pool, paste_to_insert).await {
-            Ok(_) => Ok((paste.url, paste.password)),
+            Ok(_) => Ok(NewPaste {
+                url:      paste.url,
+                password: paste.password,
+            }),
             Err(e) => Err(PasteError::Other(format!("{:?}", e))),
         }
     }
@@ -233,25 +242,49 @@ impl PasteManager {
     /// * `paste_url`: a paste's custom URL
     ///
     /// **Returns:** `Result<PasteReturn, PasteError>`
-    pub async fn update_paste(&self, paste: PasteUpdate) -> Result<(), PasteError> {
+    pub async fn update_paste(&self, mut paste: PasteUpdate) -> Result<NewPaste, PasteError> {
         let original_paste = match database::retrieve_paste(&self.pool, &paste.url).await {
             Ok(paste) => paste,
             Err(_) => return Err(PasteError::NotFound),
         };
+        let mut paste_to_return = NewPaste {
+            url:      String::new(),
+            password: String::new(),
+        };
         if hash_string(paste.password.to_owned()) != original_paste.password_hash {
             return Err(PasteError::PasswordIncorrect);
         }
+        if paste.new_password.is_empty() {
+            paste.password.clone_into(&mut paste.new_password)
+        } else {
+            paste.new_password.clone_into(&mut paste_to_return.password)
+        }
+        // validate `paste.new_url`
+        if paste.new_url.is_empty() {
+            paste.url.clone_into(&mut paste.new_url)
+        }
+        if paste.new_url.len() > 250 {
+            return Err(PasteError::InvalidUrl);
+        }
+        if !paste
+            .new_url
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
+        {
+            return Err(PasteError::InvalidUrl);
+        }
+        paste.new_url.clone_into(&mut paste_to_return.url);
         if paste.content.len() > 200_000 || paste.content.is_empty() {
             return Err(PasteError::InvalidContent);
         }
         let updated_paste = ExistingPaste {
-            url:           paste.url.to_owned(),
-            password_hash: hash_string(paste.password),
+            url:           paste.new_url.to_owned(),
+            password_hash: hash_string(paste.new_password.to_owned()),
             content:       paste.content,
             date_edited:   unix_timestamp(),
         };
         match database::update_paste(&self.pool, paste.url, updated_paste).await {
-            Ok(_) => Ok(()),
+            Ok(_) => Ok(paste_to_return),
             Err(e) => Err(PasteError::Other(format!("{:?}", e))),
         }
     }

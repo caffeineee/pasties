@@ -6,7 +6,6 @@ pasties also depends on `pulldown-cmark` for rendering markdown, although a cust
 
 pasties is currently under heavy developement, the following functionality is still missing:
 
-- a given paste's custom url and password cannot be edited through the frontend gui yet
 - pastes cannot be deleted through the frontend gui yet
 
 ### running

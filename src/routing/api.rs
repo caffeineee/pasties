@@ -1,15 +1,12 @@
 //! `routing::api` responds to requests that should return serialized data to the client. It creates an interface for the `PasteManager` CRUD struct defined in `model`
-use std::fs;
-
 use askama_axum::{IntoResponse, Response};
 use axum::{
     extract::{Path, State},
-    http::{header, StatusCode},
+    http::StatusCode,
     response::Html,
     routing::{get, post},
     Form, Json, Router,
 };
-use axum_macros::debug_handler;
 use serde::Deserialize;
 
 use crate::{
@@ -20,15 +17,15 @@ use super::pages;
 
 pub struct ApiReturn {
     status:        StatusCode,
-    message:       String,
+    body:          String,
     htmx_redirect: Option<String>,
 }
 
 impl IntoResponse for ApiReturn {
     fn into_response(self) -> Response {
         match self.htmx_redirect {
-            Some(header) => (self.status, [("HX-Redirect", header)], self.message).into_response(),
-            None => (self.status, self.message).into_response(),
+            Some(header) => (self.status, [("HX-Redirect", header)], self.body).into_response(),
+            None => (self.status, self.body).into_response(),
         }
     }
 }
@@ -54,13 +51,10 @@ async fn create_request(
 ) -> Result<Response, PasteError> {
     let res = manager.create_paste(paste_to_create).await;
     match res {
-        Ok(paste_data) => Ok(ApiReturn {
+        Ok(new_paste) => Ok(ApiReturn {
             status:        StatusCode::CREATED,
-            message:       "Paste created successfully".to_string(),
-            htmx_redirect: Some(format!(
-                "/{}?secret={}",
-                paste_data.0, paste_data.1
-            )),
+            body:          "Paste created successfully".to_string(),
+            htmx_redirect: Some(format!("/{}?secret={}", new_paste.url, new_paste.password)),
         }
         .into_response()),
         Err(err) => Err(err),
@@ -71,13 +65,14 @@ async fn update_request(
     State(manager): State<PasteManager>,
     Form(paste_to_update): Form<PasteUpdate>,
 ) -> Result<Response, PasteError> {
-    let url = paste_to_update.url.clone();
-    let res = manager.update_paste(paste_to_update).await;
-    match res {
-        Ok(_) => Ok(ApiReturn {
+    match manager.update_paste(paste_to_update).await {
+        Ok(updated_paste) => Ok(ApiReturn {
             status:        StatusCode::OK,
-            message:       "Paste updated successfully".to_string(),
-            htmx_redirect: Some(format!("/{}?updated", url)),
+            body:          "Paste updated successfully".to_string(),
+            htmx_redirect: Some(format!(
+                "/{}?updated={}",
+                updated_paste.url, updated_paste.password
+            )),
         }
         .into_response()),
         Err(e) => Err(e),
@@ -89,7 +84,12 @@ async fn delete_request(
     Form(paste_to_delete): Form<PasteDelete>,
 ) -> Result<Response, PasteError> {
     match manager.delete_paste(paste_to_delete).await {
-        Ok(_) => Ok((StatusCode::OK, "Paste deleted successfully").into_response()),
+        Ok(_) => Ok(ApiReturn {
+            status:        StatusCode::OK,
+            body:          "Paste deleted successfully".to_string(),
+            htmx_redirect: None,
+        }
+        .into_response()),
         Err(e) => Err(e),
     }
 }
