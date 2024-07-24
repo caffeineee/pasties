@@ -3,3 +3,4 @@
 /assets/style.css.map
 Cargo.lock
 *.db
+/src/legacy_model.rs

@@ -2,7 +2,7 @@
 
 use sqlx::{Row, SqlitePool};
 
-use crate::model::{ExistingPaste, Paste, PasteReturn};
+use crate::model::{DatabasePaste, PartialDatabasePaste};
 
 #[derive(Debug)]
 pub enum DatabaseError {
@@ -48,9 +48,8 @@ pub async fn init_database() -> SqlitePool {
 ///
 /// **Arguments**
 /// * `pool`: an `&SqlitePool` reference
-/// * `paste`: a `Paste` struct to create a record of
-pub async fn insert_paste(pool: &SqlitePool, paste: Paste) -> Result<PasteReturn, DatabaseError> {
-    let paste_return = paste.clone().into();
+/// * `paste`: a `DatabasePaste` struct to create a record of
+pub async fn insert_paste(pool: &SqlitePool, paste: DatabasePaste) -> Result<(), DatabaseError> {
     let query = "insert into pastes(
         id,
         url,  
@@ -69,7 +68,7 @@ pub async fn insert_paste(pool: &SqlitePool, paste: Paste) -> Result<PasteReturn
         .execute(pool)
         .await
     {
-        Ok(_) => Ok(paste_return),
+        Ok(_) => Ok(()),
         Err(e) => Err(DatabaseError::Insert(e)),
     }
 }
@@ -78,11 +77,11 @@ pub async fn insert_paste(pool: &SqlitePool, paste: Paste) -> Result<PasteReturn
 ///
 /// **Arguments**
 /// * `pool`: an `&SqlitePool` reference
-/// * `paste`: a `PasteUpdate` struct
+/// * `paste`: a `PartialDatabasePaste` struct
 pub async fn update_paste(
     pool: &SqlitePool,
     url: String,
-    paste: ExistingPaste,
+    paste: PartialDatabasePaste,
 ) -> Result<(), DatabaseError> {
     let query =
         "update pastes set url = ?, password = ?, content = ?, date_edited = ? where url = ?";
@@ -118,10 +117,13 @@ pub async fn delete_paste(pool: &SqlitePool, url: &String) -> Result<(), Databas
 /// **Arguments**
 /// * `pool`: an `&SqlitePool` reference
 /// * `url`: a paste's custom URL
-pub async fn retrieve_paste(pool: &SqlitePool, url: &String) -> Result<Paste, DatabaseError> {
+pub async fn retrieve_paste(
+    pool: &SqlitePool,
+    url: &String,
+) -> Result<DatabasePaste, DatabaseError> {
     let query = "select * from pastes where url=?1";
     match sqlx::query(query).bind(url).fetch_one(pool).await {
-        Ok(row) => Ok(Paste {
+        Ok(row) => Ok(DatabasePaste {
             id:             row.get("id"),
             url:            row.get("url"),
             password_hash:  row.get("password"),
@@ -129,6 +131,6 @@ pub async fn retrieve_paste(pool: &SqlitePool, url: &String) -> Result<Paste, Da
             date_published: row.get("date_published"),
             date_edited:    row.get("date_edited"),
         }),
-        Err(e) => Err(DatabaseError::Insert(e)),
+        Err(e) => Err(DatabaseError::Retrieval(e)),
     }
 }

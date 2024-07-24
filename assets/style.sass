@@ -118,8 +118,10 @@ nav
         color: $foreground-color
 
 .paste-options 
+    max-width: 100%
     display: grid
-    grid-template-columns: 1fr 1fr
+    align-items: stretch
+    grid-template-columns: repeat(2, 1fr)
     gap: $padding-xs
     input
         outline: none
@@ -142,12 +144,12 @@ footer
     gap: 0.4rem
 
     color: $foreground-color-muted-2
-    $dash-spacing: 1rem
+    $dash-spacing: 0.5rem
 
     &::before, &::after
         content: ""
         display: block
-        width: 30cqi
+        width: 10cqi
         border-top: 1px solid $foreground-color-muted-3
     &::before
         margin-right: $dash-spacing

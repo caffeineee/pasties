@@ -13,10 +13,10 @@ use serde::Deserialize;
 
 use crate::{
     markdown::render_markdown,
-    model::{PasteManager, PasteReturn},
+    model::{Manager, PasteReturn},
 };
 
-pub fn routes(manager: PasteManager) -> Router {
+pub fn routes(manager: Manager) -> Router {
     Router::new()
         .route("/", get(root))
         .route("/:url", get(view_paste_by_url))
@@ -88,9 +88,9 @@ pub async fn root() -> impl IntoResponse {
 
 async fn edit_paste_by_url(
     Path(url): Path<String>,
-    State(manager): State<PasteManager>,
+    State(manager): State<Manager>,
 ) -> impl IntoResponse {
-    match manager.get_paste_by_url(url).await {
+    match manager.retrieve_paste(url).await {
         Ok(paste) => Html(
             EditorView {
                 title: paste.url.clone(),
@@ -113,9 +113,9 @@ async fn edit_paste_by_url(
 async fn view_paste_by_url(
     Path(url): Path<String>,
     Query(modal_query): Query<Modal>,
-    State(manager): State<PasteManager>,
+    State(manager): State<Manager>,
 ) -> impl IntoResponse {
-    match manager.get_paste_by_url(url).await {
+    match manager.retrieve_paste(url).await {
         Ok(mut paste) => {
             paste.content = render_markdown(paste.content);
             let paste_render = PasteView {

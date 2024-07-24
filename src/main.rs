@@ -1,7 +1,7 @@
 use axum::Router;
 
 use crate::{
-    model::PasteManager,
+    model::Manager,
     routing::{api, pages},
 };
 
@@ -15,7 +15,7 @@ pub mod utility;
 async fn main() {
     const PORT: u16 = 7878;
 
-    let manager = PasteManager::init().await;
+    let manager = Manager::init().await;
 
     let app = Router::new()
         .merge(pages::routes(manager.clone()))

@@ -1,4 +1,4 @@
-//! `routing::api` responds to requests that should return serialized data to the client. It creates an interface for the `PasteManager` CRUD struct defined in `model`
+//! `routing::api` responds to requests that should return serialized data to the client. It creates an interface for the `Manager` CRUD struct defined in `model`
 use askama_axum::{IntoResponse, Response};
 use axum::{
     extract::{Path, State},
@@ -7,11 +7,11 @@ use axum::{
     routing::{get, post},
     Form, Json, Router,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     markdown::render_markdown,
-    model::{PasteCreate, PasteDelete, PasteError, PasteManager, PasteReturn, PasteUpdate},
+    model::{Manager, NewPasteData, PasteCredentials, PasteError, PasteReturn},
 };
 use super::pages;
 
@@ -19,6 +19,15 @@ pub struct ApiReturn {
     status:        StatusCode,
     body:          String,
     htmx_redirect: Option<String>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct UpdateForm {
+    pub url:          String,
+    pub password:     String,
+    pub content:      String,
+    pub new_url:      String,
+    pub new_password: String,
 }
 
 impl IntoResponse for ApiReturn {
@@ -30,7 +39,7 @@ impl IntoResponse for ApiReturn {
     }
 }
 
-pub fn routes(manager: PasteManager) -> Router {
+pub fn routes(manager: Manager) -> Router {
     Router::new()
         .route(
             "/",
@@ -46,15 +55,17 @@ pub fn routes(manager: PasteManager) -> Router {
 }
 
 async fn create_request(
-    State(manager): State<PasteManager>,
-    Form(paste_to_create): Form<PasteCreate>,
+    State(manager): State<Manager>,
+    Form(paste_to_create): Form<NewPasteData>,
 ) -> Result<Response, PasteError> {
+    let redirect_url = paste_to_create.url.clone();
+    let redirect_secret = paste_to_create.password.clone();
     let res = manager.create_paste(paste_to_create).await;
     match res {
-        Ok(new_paste) => Ok(ApiReturn {
+        Ok(()) => Ok(ApiReturn {
             status:        StatusCode::CREATED,
             body:          "Paste created successfully".to_string(),
-            htmx_redirect: Some(format!("/{}?secret={}", new_paste.url, new_paste.password)),
+            htmx_redirect: Some(format!("/{}?secret={}", redirect_url, redirect_secret)),
         }
         .into_response()),
         Err(err) => Err(err),
@@ -62,17 +73,28 @@ async fn create_request(
 }
 
 async fn update_request(
-    State(manager): State<PasteManager>,
-    Form(paste_to_update): Form<PasteUpdate>,
+    State(manager): State<Manager>,
+    Form(paste): Form<UpdateForm>,
 ) -> Result<Response, PasteError> {
-    match manager.update_paste(paste_to_update).await {
-        Ok(updated_paste) => Ok(ApiReturn {
+    let credentials = PasteCredentials {
+        url:      paste.url,
+        password: paste.password,
+    };
+    let update = NewPasteData {
+        url:      paste.new_url,
+        password: paste.new_password,
+        content:  paste.content,
+    };
+    let redirect_url = match update.url.is_empty() {
+        true => credentials.url.clone(),
+        false => update.url.clone(),
+    };
+    let redirect_secret = update.password.clone();
+    match manager.update_paste(credentials, update).await {
+        Ok(_) => Ok(ApiReturn {
             status:        StatusCode::OK,
             body:          "Paste updated successfully".to_string(),
-            htmx_redirect: Some(format!(
-                "/{}?updated={}",
-                updated_paste.url, updated_paste.password
-            )),
+            htmx_redirect: Some(format!("/{}?updated={}", redirect_url, redirect_secret)),
         }
         .into_response()),
         Err(e) => Err(e),
@@ -80,8 +102,8 @@ async fn update_request(
 }
 
 async fn delete_request(
-    State(manager): State<PasteManager>,
-    Form(paste_to_delete): Form<PasteDelete>,
+    State(manager): State<Manager>,
+    Form(paste_to_delete): Form<PasteCredentials>,
 ) -> Result<Response, PasteError> {
     match manager.delete_paste(paste_to_delete).await {
         Ok(_) => Ok(ApiReturn {
@@ -95,10 +117,10 @@ async fn delete_request(
 }
 
 pub async fn view_request(
-    State(manager): State<PasteManager>,
+    State(manager): State<Manager>,
     Path(url): Path<String>,
 ) -> Result<Json<PasteReturn>, PasteError> {
-    match manager.get_paste_by_url(url).await {
+    match manager.retrieve_paste(url).await {
         Ok(p) => Ok(Json(p)),
         Err(e) => Err(e),
     }
