@@ -8,7 +8,9 @@
     <div class="paste-container">
     {% if let Some(secret) = self.modal.secret %}
         <blockquote id="info-modal">
-            <b>Paste created!</b> Do not lose your edit password, as you won't be able to recover it later: <code>{{ secret }}</code>
+            <p>
+                <b>Paste created!</b> Do not lose your edit password, as you won't be able to recover it later: <code>{{ secret }}</code>
+            </p>
         </blockquote>
     {% endif %}
     {% if let Some(updated) = self.modal.updated %}
@@ -18,7 +20,9 @@
         </blockquote>
         {% else %}
         <blockquote id="info-modal">
-            <b>Your paste was updated successfully!</b> Do not lose your <b>new</b> edit password, as you won't be able to recover it later: <code>{{ updated }}</code>
+            <p>
+                <b>Your paste was updated successfully!</b> Do not lose your <b>new</b> edit password, as you won't be able to recover it later: <code>{{ updated }}</code>
+            </p>
         </blockquote>
         {% endif %}
     {% endif %}
