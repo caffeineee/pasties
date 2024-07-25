@@ -108,8 +108,8 @@ async fn delete_request(
     match manager.delete_paste(paste_to_delete).await {
         Ok(_) => Ok(ApiReturn {
             status:        StatusCode::OK,
-            body:          "Paste deleted successfully".to_string(),
-            htmx_redirect: None,
+            body:          "".to_string(),
+            htmx_redirect: Some(format!("/?deleted")),
         }
         .into_response()),
         Err(e) => Err(e),

@@ -14,35 +14,65 @@
 {% endblock %}
 
 {% block container %}
-    <div class="editor-container" x-data="{previewtab:  false}">
-        <blockquote id="info-modal"></blockquote>
+    <div class="editor-container" x-data="{tab: 'editor', deletemodal: false}">
+        <div class="confirmation-modal" id="delete-modal" :class="deletemodal ? '' : 'hidden'" x-cloak>
+            <div>
+                <p>Are you sure you would like to <b>delete</b> this paste?</p>
+                <div class="two-button-container">
+                    <a @click="deletemodal = false">cancel</a>
+                    <a @click="deletemodal = false" hx-delete="/api" hx-trigger="click" hx-include="[name='url'], [name='password']" hx-target="#info-modal > p" hx-swap="innerHTML" class="delete">delete</a>
+                </div>
+            </div>
+        </div>
+        <blockquote id="info-modal">
+            <p></p>
+            <a @click="document.querySelector('#info-modal>p').innerHTML=''">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            </a>
+        </blockquote>
         <nav>
             <div>
-                <a @click="previewtab=false" :class="previewtab ? '' : 'active'">edit</a>
-                <a @click="previewtab=true" :class="previewtab ? 'active' : ''" hx-post="/api/render" hx-include="[name='content']" hx-target="#preview" hx-swap="innerHTML">preview</a>
+                <a @click="tab='editor'" :class="tab=='editor' ? 'active' : ''">edit</a>
+                <a @click="tab='preview'" :class="tab=='preview' ? 'active' : ''" hx-post="/api/render" hx-include="[name='content']" hx-target="#preview" hx-swap="innerHTML">preview</a>
+                {% if paste.is_some() %}
+                <a @click="tab='settings'" :class="tab=='settings' ? 'active' : ''">settings</a>
+                {% endif %}
             </div>
             <div>
                 {% if paste.is_some() %}
-                <a hx-put="/api" hx-trigger="click" hx-include="[name='url'], [name='content'], [name='password'], [name='new_url'], [name='new_password']" hx-target="#info-modal" hx-swap="innerHTML">publish</a>
+                <a hx-put="/api" hx-trigger="click" hx-include="[name='url'], [name='content'], [name='password'], [name='new_url'], [name='new_password']" hx-target="#info-modal > p" hx-swap="innerHTML">publish</a>
                 {% else %}
-                <a hx-post="/api" hx-trigger="click" hx-include="[name='url'], [name='content'], [name='password']" hx-target="#info-modal" hx-swap="innerHTML">publish</a>
+                <a hx-post="/api" hx-trigger="click" hx-include="[name='url'], [name='content'], [name='password']" hx-target="#info-modal > p" hx-swap="innerHTML">publish</a>
                 {% endif %}
             </div>
         </nav>
         <article>
-            <div id="preview" x-show="previewtab"></div>
-            <textarea name="content" id="editor"  x-show="!previewtab">{% if paste.is_some() %}{% let p = paste.clone().unwrap() %}{{ p.content|safe }}{% endif %}</textarea>
+            <textarea name="content" id="editor" x-show="tab=='editor'">{% if paste.is_some() %}{% let p = paste.clone().unwrap() %}{{ p.content|safe }}{% endif %}</textarea>
+            <div id="preview" x-show="tab=='preview'"></div>
+            {% if paste.is_some() %}
+            <div id="settings" x-show="tab=='settings'">
+                <label>
+                    new custom url
+                    <input type="text" name="new_url" id="new_url" placeholder="url">
+                </label>
+                <label>
+                    password
+                    <input type="text" name="new_password" id="new_password" placeholder="new edit password">
+                </label>
+                <div>
+                    <p>delete your paste <span class="faint">(enter edit password below)</span></p>
+                    <a @click="deletemodal=true" class="delete">delete paste</a>
+                </div>
+            </div>
+            {% endif %}
         </article>
         <section class="paste-options">
             {% if paste.is_some() %}
             <input type="text" name="url" id="custom-url" value="{{ paste.as_ref().unwrap().url }}" class="disabled">
-            <input type="text" name="password" id="password" placeholder="edit password">
-            <input type="text" name="new_url" id="new_url" placeholder="new custom url">
-            <input type="text" name="new_password" id="new_password" placeholder="new edit password">
             {% else %}
             <input type="text" name="url" id="custom-url" placeholder="custom url">
-            <input type="text" name="password" id="password" placeholder="edit password">
             {% endif %}
+            <input type="text" name="password" id="password" placeholder="edit password">
         </section>
     </div>
     <script>

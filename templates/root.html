@@ -12,12 +12,12 @@
     <script src="https://unpkg.com/htmx.org@1.9.12" integrity="sha384-ujb1lZYygJmzgSwoxRggbCHcjc0rB2XoQrxeTUQyRjrOnlCoYta87iKBWq3EsdM2" crossorigin="anonymous" defer></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
-<body>
-    <div id="welcome-modal" class="hidden">
+<body x-data="{welcomemodal: false}">
+    <div class="modal" id="welcome-modal" :class="welcomemodal ? '' : 'hidden'" x-cloak>
         <div>
             <h1>Pasties</h1>
             <p>pasties is a small markdown-equipped pastebin site written in rust</p>
-            <button hx-on:click="document.getElementById('welcome-modal').classList.add('hidden')">Close</button>
+            <a @click="welcomemodal = false">Close</a>
         </div>
     </div>
     <main>
@@ -30,7 +30,7 @@
             ·
             <a href="/">New</a>
             ·
-            <a hx-on:click="document.getElementById('welcome-modal').classList.remove('hidden')">Information</a>
+            <a @click="welcomemodal = true">Information</a>
         </footer>
     </main>
 </body>

@@ -4,12 +4,14 @@ $background-color: hsl(0, 0%, 4%)
 $background-color-raised: hsl(0, 0%, 7%)
 $background-color-medium-raised: hsl(0, 0%, 14%)
 $background-color-block: hsl(0, 0%, 20%)
+$background-color-block-red: hsl(0, 45%, 30%)
 
 $foreground-color: #fefefe
 $foreground-color-muted: hsl(0, 0%, 70%)
 $foreground-color-muted-2: hsl(0, 0%, 40%)
 $foreground-color-muted-3: hsl(0, 0%, 20%)
 $foreground-color-muted-4: hsl(0, 0%, 10%)
+$foreground-color-red: hsl(0, 70%, 80%)
 
 $border-radius: 0.2rem
 $padding-l: 2rem
@@ -53,7 +55,7 @@ body
 
 main
     height: 100%
-    width: calc(min(60ch, 100% - 2*$padding-xs))
+    width: calc(min(60ch, 100vw - 2*$padding-xs))
     padding: $padding-xs 0 $padding-l 0
 
     display: flex
@@ -116,14 +118,24 @@ nav
 
         font-family: monospace
         color: $foreground-color
+    #settings
+        > *:not(:last-child)
+            margin-bottom: $padding-s
+        label, input
+            display: block
+        label > input, div > a
+            margin-top: $padding-xs
+        input
+            background-color: $background-color-medium-raised
+        input:focus
+            outline-color: $foreground-color-muted-3
 
 .paste-options 
-    max-width: 100%
-    display: grid
-    align-items: stretch
-    grid-template-columns: repeat(2, 1fr)
+    display: flex
     gap: $padding-xs
     input
+        flex: 1 1 0px
+        width: 100%
         outline: none
     > a
         width: fit-content
@@ -155,17 +167,13 @@ footer
         margin-right: $dash-spacing
     &::after
         margin-left: $dash-spacing
-
     a 
-        all: unset
         cursor: pointer
+        background-color: inherit
+        padding: 0
 
 // MODALS
-
-#info-modal:empty
-    display: none
-
-#welcome-modal
+.confirmation-modal
     position: absolute
     z-index: 99
     top: 0
@@ -175,19 +183,65 @@ footer
     backdrop-filter: blur(2px)
     display: grid
     place-items: center
-    div
-        $modal-width: calc(min(40ch, 100cqi - 2*$padding-s))
+    > div
+        background-color: $background-color-medium-raised
+        border-radius: $border-radius
+        padding: $padding-m
+    > div > div
+        margin-top: $padding-s
+        display: flex
+        justify-content: space-between
+    a
+        text-decoration: none
+        padding: 0.5rem 0.9rem
+        border-radius: 0.2rem
+        background-color: $background-color-block
+        cursor: pointer
+    &.hidden
+        display: none
 
+.modal
+    position: absolute
+    z-index: 99
+    top: 0
+    left: 0
+    width: 100vw
+    height: 100vh
+    backdrop-filter: blur(2px)
+    display: grid
+    place-items: center
+    > div
+        $modal-width: calc(min(40ch, 100cqi - 2*$padding-s))
         background-color: $background-color-medium-raised
         border-radius: $border-radius
         width: $modal-width
-        padding-block: $padding-l
+        padding: $padding-l
+        display: flex
+        flex-direction: column
+        gap: $padding-s
+    .two-button-container
+        display: flex
+        flex-direction: row
+        justify-content: space-between
+    a
+        text-decoration: none
+        padding: 0.5rem 0.9rem
+        border-radius: 0.2rem
+        background-color: $background-color-block
+        cursor: pointer
+    &:empty
+        display: none
+    &.hidden
+        display: none
 
+#welcome-modal
+    div
         display: grid
         grid-template-columns: [full-width-start] $padding-l [content-start] 1fr [content-end] $padding-l [full-width-start]
-        gap: 1rem 0 
+        gap: $padding-s 0 
         align-items: baseline
         justify-items: start
+        padding-inline: 0
 
         > *
             grid-column: content
@@ -210,26 +264,53 @@ footer
             inset: 0
             width: 100%
             background-image: linear-gradient(0deg,#d79921 0%,#d79921 25%,#d65d0e 25%,#d65d0e 50%,#cc241d 50%,#cc241d 75%,#b16286 75%,#b16286 100%)
-    button
-        background-color: $background-color-block
-
     &:empty
         display: none
     &.hidden
         display: none
 
+#info-modal 
+    position: relative
+    height: min-content
+    display: flex
+    flex-direction: row
+    justify-content: space-between
+    svg
+        height: 1rem
+        width: auto
+        stroke-width: 3px
+    a
+        aspect-ratio: 1 / 1
+        display: grid
+        place-items: center
+        aspect-ratio: 1 / 1
+        background-color: #00000000
+        padding: 0
+
+#info-modal:has(p:empty)
+    display: none
+
+
 // NATIVE ELEMENTS
 
 input, button, a
-    all: unset
-    padding: $padding-xs
+    background-color: none
+    border: none
+    font: inherit
+    color: inherit
     background-color: $background-color-raised
     border-radius: $border-radius
+input
+    padding: $padding-xs $padding-s
 button, a
     padding: $padding-xs $padding-s  
     cursor: pointer
     color: inherit
     text-decoration: none
+    display: inline-block
+a.delete
+    color: $foreground-color-red
+    background-color: $background-color-block-red
 input.disabled
     pointer-events: none
     color: $foreground-color-muted
@@ -283,3 +364,7 @@ h6
     font-size: 1.2rem
     font-weight: 700
     margin-block: 0.3em
+
+.faint
+    font-size: 0.9rem
+    opacity: 0.5
